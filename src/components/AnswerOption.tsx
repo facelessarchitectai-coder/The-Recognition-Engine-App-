@@ -12,9 +12,15 @@ export interface AnswerOptionProps {
   onToggle: () => void;
   index?: number;
   key?: string | number;
+  isColorMode?: boolean;
 }
 
-export function AnswerOption({ id, label, selected, onToggle }: AnswerOptionProps) {
+export function AnswerOption({ id, label, selected, onToggle, isColorMode = false }: AnswerOptionProps) {
+  const filigreeColor = isColorMode ? "#F4CCD8" : "#d4b053";
+  const prongColor = isColorMode ? "#F4CCD8" : "#e5b842";
+  const highlightColor = isColorMode ? "#F4CCD8" : "#d8b043";
+  const ringBorderColor = isColorMode ? "rgba(244, 204, 216, 0.75)" : "rgba(212, 176, 83, 0.7)";
+
   return (
     <button
       id={`option-${id}`}
@@ -31,7 +37,7 @@ export function AnswerOption({ id, label, selected, onToggle }: AnswerOptionProp
           ? "linear-gradient(135deg, rgba(255, 248, 246, 0.94) 0%, rgba(255, 236, 232, 0.86) 100%)"
           : "linear-gradient(135deg, rgba(255, 252, 250, 0.72) 0%, rgba(255, 242, 238, 0.52) 100%)",
         boxShadow: selected
-          ? "inset 0 1px 3px rgba(255,255,255,1), 0 6px 20px rgba(110,30,45,0.12), 0 0 0 1.5px rgba(212,176,83,0.7)"
+          ? `inset 0 1px 3px rgba(255,255,255,1), 0 6px 20px rgba(110,30,45,0.12), 0 0 0 1.5px ${ringBorderColor}`
           : "inset 0 1px 2px rgba(255,255,255,0.85), 0 4px 14px rgba(110,30,45,0.03), 0 0 0 1.2px rgba(255,255,255,0.65)",
       }}
     >
@@ -60,16 +66,16 @@ export function AnswerOption({ id, label, selected, onToggle }: AnswerOptionProp
           {/* 1. Underlying Gold Filigree Setting Wires (Prong frameworks integrating the jewels) */}
           <svg className="absolute inset-0 w-full h-full opacity-65" viewBox="0 0 110 54" fill="none">
             {/* Fine handcast gold wires and prongs holding the cluster together */}
-            <path d="M45,41 C54,34 68,36 82,24" stroke="#d4b053" strokeWidth="0.85" />
-            <path d="M68,36 C80,38 90,30 96,16" stroke="#d4b053" strokeWidth="0.75" strokeDasharray="1.5 1" />
+            <path d="M45,41 C54,34 68,36 82,24" stroke={filigreeColor} strokeWidth="0.85" />
+            <path d="M68,36 C80,38 90,30 96,16" stroke={filigreeColor} strokeWidth="0.75" strokeDasharray="1.5 1" />
             
             {/* Tiny gold prongs/bezel points supporting each faceted gemstone */}
-            <circle cx="58" cy="18" r="1.1" fill="#e5b842" />
-            <circle cx="82" cy="12" r="1.1" fill="#e5b842" />
-            <circle cx="92" cy="22" r="1" fill="#e5b842" />
-            <circle cx="70" cy="32" r="1.1" fill="#e5b842" />
+            <circle cx="58" cy="18" r="1.1" fill={prongColor} />
+            <circle cx="82" cy="12" r="1.1" fill={prongColor} />
+            <circle cx="92" cy="22" r="1" fill={prongColor} />
+            <circle cx="70" cy="32" r="1.1" fill={prongColor} />
           </svg>
-
+          
           {/* 2. Top-Left Faceted Marquise Pink Gemstone (Rose Emerald, 13px) */}
           {/* Overlaps gold setting wires and nestles with pearls */}
           <div 
@@ -104,7 +110,10 @@ export function AnswerOption({ id, label, selected, onToggle }: AnswerOptionProp
           </div>
 
           {/* Gold pendant attachment bail cap holding the Central Pearl onto the wires */}
-          <div className="absolute right-[24px] bottom-[19px] w-[4px] h-[3px] bg-[#d4b053] rounded-t-[1.5px] opacity-90 border-t-[0.2px] border-white/20 shadow-[0_0.5px_1px_rgba(0,0,0,0.1)]" />
+          <div 
+            className="absolute right-[24px] bottom-[19px] w-[4px] h-[3px] rounded-t-[1.5px] opacity-90 border-t-[0.2px] border-white/20 shadow-[0_0.5px_1px_rgba(0,0,0,0.1)]" 
+            style={{ backgroundColor: filigreeColor }}
+          />
 
           {/* 5. Faceted Cushion-Cut Brilliant Diamond with refractive sparkles (10px) */}
           {/* Nestled on the right side, overlapping the master pearl */}
@@ -132,8 +141,12 @@ export function AnswerOption({ id, label, selected, onToggle }: AnswerOptionProp
         {/* Custom luxury radio indicator containing a sparkling diamond inside */}
         <div
           className={`w-[22px] h-[22px] rounded-full shrink-0 flex items-center justify-center transition-all duration-300 overflow-hidden
-            ${selected ? "border border-[#d8b043] shadow-[0_2px_8px_rgba(216,176,67,0.35)] bg-white/10" : "border-[1.5px] border-[#caa28f]/60 bg-white/30"}
+            ${selected ? `border bg-white/10` : "border-[1.5px] border-[#caa28f]/60 bg-white/30"}
           `}
+          style={selected ? {
+            borderColor: highlightColor,
+            boxShadow: isColorMode ? "0 2px 8px rgba(244, 204, 216, 0.45)" : "0 2px 8px rgba(216, 176, 67, 0.35)"
+          } : undefined}
         >
           {selected ? (
             /* Selected state displays an actual refractive cushion cut diamond */
@@ -151,7 +164,10 @@ export function AnswerOption({ id, label, selected, onToggle }: AnswerOptionProp
 
       {/* Decorative tiny corner gold point (extremely subtle micro aesthetic detail) */}
       <div className="absolute right-3.5 top-3.5 pointer-events-none opacity-30 group-hover:opacity-75 transition-opacity duration-200">
-        <div className="w-1 h-1 bg-[#d8b043] rotate-45 transform" />
+        <div 
+          className="w-1 h-1 rotate-45 transform" 
+          style={{ backgroundColor: highlightColor }}
+        />
       </div>
     </button>
   );

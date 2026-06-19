@@ -3,15 +3,17 @@ import {
   VISUAL_DIRECTION_QUESTIONS, 
   SIGNATURE_MARK_QUESTIONS, 
   FINGERPRINTS_QUESTIONS, 
+  COLOR_WORLD_QUESTIONS,
   VISUAL_DIRECTION_STEPS, 
   SIGNATURE_MARK_STEPS, 
   FINGERPRINTS_STEPS, 
+  COLOR_WORLD_STEPS,
   Question 
 } from "./data";
 import GemsAndPearls from "./components/GemsAndPearls";
 import AnswerOption from "./components/AnswerOption";
 import UploadReferences, { RefImage } from "./components/UploadReferences";
-import { ArrowLeft, Check, AlertTriangle, RefreshCw } from "lucide-react";
+import { ArrowLeft, Check, AlertTriangle, RefreshCw, Sparkles, ExternalLink } from "lucide-react";
 import { generateFallbackResult, FallbackData } from "./utils/fallbackGenerator";
 
 // Real-world high-fidelity generated jewelry photography assets
@@ -21,8 +23,8 @@ import pearlNecklaceImg from "./assets/images/pearl_necklace_1781750905009.jpg";
 import globePocketWatchImg from "./assets/images/heirloom_globe_watch_1781836941406.jpg";
 
 export function App() {
-  // Mode selection state: 'visual' or 'signature' or 'fingerprints'
-  const [activeMode, setActiveMode] = useState<"visual" | "signature" | "fingerprints">("visual");
+  // Mode selection state: 'visual' or 'signature' or 'fingerprints' or 'color'
+  const [activeMode, setActiveMode] = useState<"visual" | "signature" | "fingerprints" | "color">("visual");
 
   // Router-style state: 'home' | 'quiz' | 'results' | 'error'
   const [screen, setScreen] = useState<"home" | "quiz" | "results" | "error">("home");
@@ -41,8 +43,20 @@ export function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [generatedPhrases, setGeneratedPhrases] = useState<string[]>([]);
-  const [generatedFingerprint, setGeneratedFingerprint] = useState<{ emojis: string[]; explanation: string } | null>(null);
+  const [generatedFingerprint, setGeneratedFingerprint] = useState<{
+    emojis: string[];
+    explanation: string;
+    analysis?: {
+      repetition: string;
+      themes: string;
+      emotionalTone: string;
+      visualConsistency: string;
+      strongestCombination: string;
+    } | null;
+  } | null>(null);
+  const [generatedColorWorld, setGeneratedColorWorld] = useState<{ palette: { name: string; hex: string; role: string }[]; moodLine: string } | null>(null);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+  const [copiedColorIndex, setCopiedColorIndex] = useState<number | null>(null);
   const [copiedAll, setCopiedAll] = useState(false);
   const [copiedFingerprint, setCopiedFingerprint] = useState(false);
   const [showModeSelector, setShowModeSelector] = useState(false);
@@ -50,17 +64,51 @@ export function App() {
   const [fallbackErrorMessage, setFallbackErrorMessage] = useState<string>("");
 
   // Mode settings
-  const modeAccentColor = activeMode === "visual" ? "#3a9d92" : (activeMode === "signature" ? "#8a3a5c" : "#F3A9C8"); // teal, deep mauve or soft rose
-  const modeAccentBg = activeMode === "visual" ? "bg-[#3a9d92]" : (activeMode === "signature" ? "bg-[#8a3a5c]" : "bg-[#F3A9C8]");
-  const modeTextLight = activeMode === "visual" ? "text-[#3a9d92]" : (activeMode === "signature" ? "text-[#8a3a5c]" : "text-[#F3A9C8]");
+  const modeAccentColor = activeMode === "visual"
+    ? "#3a9d92"
+    : activeMode === "signature"
+    ? "#8a3a5c"
+    : activeMode === "fingerprints"
+    ? "#F3A9C8"
+    : "#F4CCD8"; // Soft Blush Pink
+  const modeAccentBg = activeMode === "visual"
+    ? "bg-[#3a9d92]"
+    : activeMode === "signature"
+    ? "bg-[#8a3a5c]"
+    : activeMode === "fingerprints"
+    ? "bg-[#F3A9C8]"
+    : "bg-[#F4CCD8]";
+  const modeTextLight = activeMode === "visual"
+    ? "text-[#3a9d92]"
+    : activeMode === "signature"
+    ? "text-[#8a3a5c]"
+    : activeMode === "fingerprints"
+    ? "text-[#F3A9C8]"
+    : "text-[#F4CCD8]";
 
-  // Steps configuration depending on mode
-  const currentSteps = activeMode === "visual" 
-    ? VISUAL_DIRECTION_STEPS 
-    : (activeMode === "signature" ? SIGNATURE_MARK_STEPS : FINGERPRINTS_STEPS);
-  const currentQuestions = activeMode === "visual" 
-    ? VISUAL_DIRECTION_QUESTIONS 
-    : (activeMode === "signature" ? SIGNATURE_MARK_QUESTIONS : FINGERPRINTS_QUESTIONS);
+  const getButtonBg = () => {
+    return activeMode === "color"
+      ? (isContinueEnabled()
+          ? "linear-gradient(135deg, rgba(244, 204, 216, 0.95) 0%, rgba(234, 184, 198, 0.85) 100%)"
+          : "rgba(244, 204, 216, 0.25)")
+      : (isContinueEnabled()
+          ? "linear-gradient(135deg, rgba(135, 70, 85, 0.85) 0%, rgba(108, 54, 66, 0.75) 100%)"
+          : "rgba(108, 54, 66, 0.3)");
+  };
+
+  const getButtonShadow = () => {
+    return activeMode === "color"
+      ? (isContinueEnabled()
+          ? "inset 0 1px 2px rgba(255, 255, 255, 0.5), 0 4px 14px rgba(244, 204, 216, 0.15)"
+          : "none")
+      : (isContinueEnabled()
+          ? "inset 0 1px 2px rgba(255, 255, 255, 0.3), 0 4px 14px rgba(110, 30, 45, 0.14)"
+          : "none");
+  };
+
+  // Steps configuration depending on mode (simplified to a single high-integrity open-ended input step per mode)
+  const currentSteps = ["INPUT"];
+  const currentQuestions: Question[] = [];
 
   // Start the quiz
   const handleBegin = () => {
@@ -72,31 +120,28 @@ export function App() {
   };
 
   // Helper to check if current step is References
-  const isReferencesStep = activeMode !== "fingerprints" && currentStepIndex === currentSteps.length - 1;
+  const isReferencesStep = true;
 
   // Get current active question (if during quiz and not the last step)
-  const currentQuestion: Question | undefined = !isReferencesStep ? currentQuestions[currentStepIndex] : undefined;
+  const currentQuestion = undefined;
 
   // Toggle selection on an option
-  const handleToggleOption = (option: string) => {
-    if (!currentQuestion) return;
-    const qId = currentQuestion.id;
-    setSelections((prev) => {
-      const currentList = prev[qId] || [];
-      if (currentList.includes(option)) {
-        return { ...prev, [qId]: currentList.filter((item) => item !== option) };
-      } else {
-        return { ...prev, [qId]: [...currentList, option] };
-      }
-    });
-  };
+  const handleToggleOption = (option: string) => {};
 
   // Check if "Continue" can be clicked for the current step
   const isContinueEnabled = () => {
-    if (isReferencesStep) return true; // optional
-    if (!currentQuestion) return false;
-    const qId = currentQuestion.id;
-    return (selections[qId] || []).length > 0;
+    if (activeMode === "fingerprints") {
+      try {
+        const regex = /\p{Extended_Pictographic}/gu;
+        const count = (refText.match(regex) || []).length;
+        return count >= 4 && count <= 8;
+      } catch (e) {
+        const fallbackRegex = /[\u{1F300}-\u{1F6FF}\u{1F900}-\u{1F9FF}\u{2600}-\u{27BF}]/gu;
+        const count = (refText.match(fallbackRegex) || []).length;
+        return count >= 4 && count <= 8;
+      }
+    }
+    return refText.trim().length > 0 || refImages.length > 0;
   };
 
   // Process Next Step / Generate Results
@@ -125,12 +170,20 @@ export function App() {
     setFallbackErrorMessage("");
 
     try {
-      // Compile answer objects
-      const answersPayload = currentQuestions.map((q) => ({
-        questionStep: q.stepName,
-        questionTitle: q.title,
-        selections: selections[q.id] || [],
-      }));
+      // Compile answer objects from the open-ended typing to handle on backend
+      const answersPayload = [
+        {
+          questionStep: "INPUT",
+          questionTitle: activeMode === "visual" 
+            ? "Images I Keep Saving"
+            : activeMode === "signature"
+            ? "Things People Associate With Me"
+            : activeMode === "fingerprints"
+            ? "Emojis I Naturally Use"
+            : "Colors I Keep Returning To",
+          selections: [refText],
+        }
+      ];
 
       const response = await fetch("/api/generate", {
         method: "POST",
@@ -140,11 +193,13 @@ export function App() {
         body: JSON.stringify({
           mode: activeMode,
           answers: answersPayload,
-          referencesText: activeMode === "fingerprints" ? "" : refText,
-          refImages: activeMode === "fingerprints" ? [] : refImages.map((img) => ({
-            data: img.data,
-            mimeType: img.mimeType,
-          })),
+          referencesText: refText,
+          refImages: (activeMode === "visual" || activeMode === "signature") 
+            ? refImages.map((img) => ({
+                data: img.data,
+                mimeType: img.mimeType,
+              }))
+            : [],
         }),
       });
 
@@ -156,6 +211,13 @@ export function App() {
           setGeneratedFingerprint({
             emojis: data.emojis || [],
             explanation: data.explanation || "",
+            analysis: data.analysis || null,
+          });
+          setScreen("results");
+        } else if (activeMode === "color") {
+          setGeneratedColorWorld({
+            palette: data.palette || [],
+            moodLine: data.moodLine || "",
           });
           setScreen("results");
         } else {
@@ -172,6 +234,11 @@ export function App() {
             emojis: fallback.emojis || [],
             explanation: fallback.explanation || "",
           });
+        } else if (activeMode === "color") {
+          setGeneratedColorWorld({
+            palette: (fallback.palette as any) || [],
+            moodLine: fallback.moodLine || "",
+          });
         } else {
           setGeneratedPhrases(fallback.phrases);
         }
@@ -186,6 +253,11 @@ export function App() {
         setGeneratedFingerprint({
           emojis: fallback.emojis || [],
           explanation: fallback.explanation || "",
+        });
+      } else if (activeMode === "color") {
+        setGeneratedColorWorld({
+          palette: (fallback.palette as any) || [],
+          moodLine: fallback.moodLine || "",
         });
       } else {
         setGeneratedPhrases(fallback.phrases);
@@ -203,10 +275,20 @@ export function App() {
     setRefText("");
     setCurrentStepIndex(0);
     setGeneratedFingerprint(null);
+    setGeneratedColorWorld(null);
     setCopiedFingerprint(false);
     setFallbackData(null);
     setFallbackErrorMessage("");
     setScreen("home");
+  };
+
+  // Copy color hex to Clipboard
+  const handleCopyColorHex = (hex: string, index: number) => {
+    navigator.clipboard.writeText(hex);
+    setCopiedColorIndex(index);
+    setTimeout(() => {
+      setCopiedColorIndex(null);
+    }, 1500);
   };
 
   // Copy unique copyable pill to Clipboard
@@ -304,56 +386,70 @@ export function App() {
                   }
                 `}
               >
-                Fingerprints
+                Emoji Archive
               </button>
-            </div>
-
-            {/* 3. Centered Large Elegant Serif Title */}
-            <div className="mt-14 w-full z-10">
-              <h1 
-                id="mode-showcase-title" 
-                className="font-serif text-[42px] leading-[1.1] font-normal text-white tracking-wide select-none filter drop-shadow-[0_4px_12px_rgba(0,0,0,0.55)]"
-                style={{ textShadow: "0 2.5px 12px rgba(0,0,0,0.8)" }}
-              >
-                {activeMode === "visual" ? "Visual Direction" : (activeMode === "signature" ? "Signature Mark" : "Fingerprints")}
-              </h1>
-              {/* Subtitle placed on its own darker overlay layer */}
-              <div 
-                className="mt-6 mx-auto max-w-[340px] py-4 px-6 rounded-[24px] bg-black/65 border border-white/10 shadow-lg backdrop-blur-[6px] relative overflow-hidden"
-                style={{
-                  boxShadow: "inset 0 1px 1px rgba(255,255,255,0.08), 0 4px 18px rgba(0,0,0,0.35)"
-                }}
-              >
-                <p 
-                  id="mode-showcase-tagline" 
-                  className="font-serif italic text-[15.5px] font-semibold text-white select-none leading-relaxed text-center"
-                  style={{ 
-                    opacity: 1.0,
-                    textShadow: "0 1px 3px rgba(0,0,0,0.6)"
-                  }}
-                >
-                  {activeMode === "visual" && "Before you open Pinterest. Before you search anything."}
-                  {activeMode === "signature" && "A mark that’s yours. Even when they screenshot it."}
-                  {activeMode === "fingerprints" && "A small consistent set of emojis to use across captions and your bio."}
-                </p>
-              </div>
-            </div>
-
-            {/* 4. BEGIN button under the subtitle */}
-            <div className="w-full flex justify-center mt-12 z-10">
               <button
-                id="begin-btn"
-                onClick={handleBegin}
-                className={`px-10 py-2.5 rounded-full font-sans font-bold text-[10px] tracking-[0.25em] transition-all duration-200 hover:scale-[1.02] active:scale-95 cursor-pointer uppercase select-none border-0 shadow-md ${
-                  activeMode === "fingerprints" ? "text-neutral-900 font-extrabold" : "text-white"
-                }`}
-                style={{
-                  backgroundColor: modeAccentColor,
-                }}
+                id="tab-color-world"
+                onClick={() => setActiveMode("color")}
+                className={`flex-1 py-1.5 px-2 rounded-full text-[10px] tracking-wider transition-all duration-300 font-sans font-bold uppercase select-none border cursor-pointer text-center
+                  ${
+                    activeMode === "color"
+                      ? "bg-[#F4CCD8] text-[#1F2421] border-transparent shadow-[0_3px_10px_rgba(244,204,216,0.35)]"
+                      : "border-white/20 bg-black/35 backdrop-blur-[4px] text-white/85 hover:border-white/40 hover:bg-black/55 hover:text-white"
+                  }
+                `}
               >
-                BEGIN
+                Color World
               </button>
             </div>
+ 
+             {/* 3. Centered Large Elegant Serif Title */}
+             <div className="mt-14 w-full z-10">
+               <h1 
+                 id="mode-showcase-title" 
+                 className="font-serif text-[42px] leading-[1.1] font-normal text-white tracking-wide select-none filter drop-shadow-[0_4px_12px_rgba(0,0,0,0.55)]"
+                 style={{ textShadow: "0 2.5px 12px rgba(0,0,0,0.8)" }}
+               >
+                 {activeMode === "visual" ? "Visual Direction" : (activeMode === "signature" ? "Signature Mark" : (activeMode === "fingerprints" ? "Emoji Fingerprint" : "Color World"))}
+               </h1>
+               {/* Subtitle placed on its own darker overlay layer */}
+               <div 
+                 className="mt-6 mx-auto max-w-[340px] py-4 px-6 rounded-[24px] bg-black/65 border border-white/10 shadow-lg backdrop-blur-[6px] relative overflow-hidden"
+                 style={{
+                   boxShadow: "inset 0 1px 1px rgba(255,255,255,0.08), 0 4px 18px rgba(0,0,0,0.35)"
+                 }}
+               >
+                 <p 
+                   id="mode-showcase-tagline" 
+                   className="font-serif italic text-[15.5px] font-semibold text-white select-none leading-relaxed text-center"
+                   style={{ 
+                     opacity: 1.0,
+                     textShadow: "0 1px 3px rgba(0,0,0,0.6)"
+                   }}
+                 >
+                   {activeMode === "visual" && "Before you open Pinterest. Before you search anything."}
+                   {activeMode === "signature" && "A mark that’s yours. Even when they screenshot it."}
+                   {activeMode === "fingerprints" && "The 4–8 emojis you use most naturally, analyzed for true system-based identity."}
+                   {activeMode === "color" && "A living range of colors that shift and adapt over time."}
+                 </p>
+               </div>
+             </div>
+ 
+             {/* 4. BEGIN button under the subtitle */}
+             <div className="w-full flex justify-center mt-12 z-10">
+               <button
+                 id="begin-btn"
+                 onClick={handleBegin}
+                 className={`px-10 py-2.5 rounded-full font-sans font-bold text-[10px] tracking-[0.25em] transition-all duration-200 hover:scale-[1.02] active:scale-95 cursor-pointer uppercase select-none border-0 shadow-md ${
+                   (activeMode === "fingerprints" || activeMode === "color") ? "text-neutral-900 font-extrabold" : "text-white"
+                 }`}
+                 style={{
+                   backgroundColor: modeAccentColor,
+                 }}
+               >
+                 BEGIN
+               </button>
+             </div>
           </div>
         )}
 
@@ -368,81 +464,63 @@ export function App() {
                 id="quiz-step-navbar"
                 className="flex items-center gap-4 overflow-x-auto no-scrollbar py-2 w-full select-none"
               >
-                {currentSteps.map((step, idx) => {
-                  const isActive = idx === currentStepIndex;
-                  return (
-                    <span
-                      key={step}
-                      className={`text-[10px] font-sans font-bold tracking-widest shrink-0 uppercase select-none
-                        ${isActive ? "text-black font-extrabold scale-105" : "text-black/45"}
-                      `}
-                    >
-                      {step}
-                    </span>
-                  );
-                })}
+                <span
+                  className="text-[10px] font-sans font-extrabold tracking-widest shrink-0 uppercase select-none text-black scale-105"
+                >
+                  {activeMode === "visual"
+                    ? "VISUAL DIRECTION"
+                    : activeMode === "signature"
+                    ? "SIGNATURE MARK"
+                    : activeMode === "fingerprints"
+                    ? "EMOJI ARCHIVE"
+                    : "COLOR WORLD"}
+                </span>
               </div>
-              {/* Thin gold horizontal divider */}
-              <div className="w-full h-[1.5px] bg-[#cda434] mt-1 opacity-70" />
+              {/* Thin mode-specific horizontal accent divider */}
+              <div 
+                className="w-full h-[1.5px] mt-1 opacity-70 transition-colors duration-300"
+                style={{ backgroundColor: modeAccentColor }}
+              />
             </div>
 
             {/* 2. Step Label / Current Step Info */}
-            <div className="space-y-4 text-left">
-              <span id="quiz-short-breadcrumb" className="font-sans text-[11px] font-extrabold tracking-[0.2em] text-black uppercase select-none">
-                {currentSteps[currentStepIndex]}
+            <div className="space-y-4 text-left select-none">
+              <span id="quiz-short-breadcrumb" className="font-sans text-[11px] font-extrabold tracking-[0.2em] text-black uppercase">
+                {activeMode === "visual"
+                  ? "Visual Direction"
+                  : activeMode === "signature"
+                  ? "Signature Mark"
+                  : activeMode === "fingerprints"
+                  ? "Emoji Archive"
+                  : "Color World"}
               </span>
 
-              {/* 3. Question Title & Subtext */}
-              {!isReferencesStep ? (
-                <>
-                  <h2 id="quiz-question-title" className="font-serif text-[28px] leading-tight text-black select-none font-medium">
-                    {currentQuestion?.title}
-                  </h2>
-                  <p id="quiz-question-subtitle" className="font-serif italic text-[15px] text-black/85 leading-relaxed select-none">
-                    {currentQuestion?.subtitle}
-                  </p>
-                </>
-              ) : (
-                <>
-                  <h2 id="quiz-question-title" className="font-serif text-[28px] leading-tight text-black select-none font-medium">
-                    Upload or describe visuals that already feel right.
-                  </h2>
-                  <p id="quiz-question-subtitle" className="font-serif italic text-[15px] text-black/85 leading-relaxed select-none">
-                    These don’t have to be perfect. They just have to pull you in. Upload up to 5 images, or describe what you’re drawn to in text.
-                  </p>
-                </>
-              )}
+              <h2 id="quiz-question-title" className="font-serif text-[28px] leading-tight text-black font-medium">
+                {activeMode === "visual" && "Images I Keep Saving"}
+                {activeMode === "signature" && "Things People Associate With Me"}
+                {activeMode === "fingerprints" && "Emoji Fingerprint"}
+                {activeMode === "color" && "Colors I Keep Returning To"}
+              </h2>
+              <p id="quiz-question-subtitle" className="font-sans text-[15px] text-black font-black leading-relaxed not-italic">
+                {activeMode === "visual" && "List objects, environments, aesthetics, or visuals that repeatedly appear in your saves."}
+                {activeMode === "signature" && "Add symbols, phrases, colors, themes, objects, or ideas that people already connect to you."}
+                {activeMode === "fingerprints" && "Add the 4–8 emojis you use most naturally. These should be emojis that already appear in your captions, stories, comments, notes, or messages."}
+                {activeMode === "color" && (
+                  <span className="text-black font-black block my-1">
+                    ⚠️ CRITICAL REQUIREMENT: You must explicitly write <span className="underline decoration-black font-black">"Colors I will use are these -"</span> and <span className="underline decoration-black font-black">"Colors I will not use are these-"</span>. Otherwise, the system will assume all colors listed are meant for active use.
+                  </span>
+                )}
+              </p>
             </div>
 
-            {/* 4. Active options / Upload controls */}
-            {!isReferencesStep && currentQuestion ? (
-              <div id="quiz-option-scaffolding" className="space-y-3.5">
-                {/* Instruction caption now at the top of the options */}
-                <span id="select-all-caption" className="block text-left font-serif italic text-xs text-black/80 pb-2.5 border-b border-[#caa28f]/30 select-none">
-                  *Select all that apply.
-                </span>
-                {currentQuestion.options.map((opt, optIdx) => {
-                  const isSelected = (selections[currentQuestion.id] || []).includes(opt);
-                  return (
-                    <AnswerOption
-                      key={opt}
-                      id={opt.substring(0, 15).toLowerCase().replace(/[^a-z0-9]/g, "")}
-                      label={opt}
-                      selected={isSelected}
-                      index={optIdx}
-                      onToggle={() => handleToggleOption(opt)}
-                    />
-                  );
-                })}
-              </div>
-            ) : (
-              <UploadReferences
-                images={refImages}
-                setImages={setRefImages}
-                textDescription={refText}
-                setTextDescription={setRefText}
-              />
-            )}
+            {/* 4. Active input controls */}
+            <UploadReferences
+              images={refImages}
+              setImages={setRefImages}
+              textDescription={refText}
+              setTextDescription={setRefText}
+              activeMode={activeMode}
+            />
 
             {/* Loading Indicator for API generating */}
             {isLoading && (
@@ -464,80 +542,92 @@ export function App() {
                     </div>
                   </div>
                   <h3 className="font-serif text-2xl text-white font-light tracking-wide">
-                    {activeMode === "fingerprints" ? "Forging Your Fingerprint" : "Curation in process"}
+                    {activeMode === "fingerprints"
+                      ? "Forging Your Fingerprint"
+                      : activeMode === "color"
+                      ? "Formulating Your Color World"
+                      : "Curation in process"}
                   </h3>
                   <p className="font-serif italic text-[#e9c3cf] text-[15px] max-w-sm mt-3 leading-relaxed">
-                    {activeMode === "fingerprints" 
+                    {activeMode === "fingerprints"
                       ? "Assembling the perfect sequence of signature emojis based on your spirit..."
+                      : activeMode === "color"
+                      ? "Formulating color frequencies to paint a living sensory universe..."
                       : "Distilling your subtle inputs into exact Pinterest query coordinates..."}
                   </p>
                 </div>
               </div>
             )}
-
-            {/* 5. Navigation Bottom Row */}
-            <div id="quiz-action-bar" className="flex items-center justify-between mt-4">
-              <button
-                id="back-step-btn"
-                onClick={handleBack}
-                className="font-serif text-[17px] text-black hover:opacity-75 transition-all bg-transparent border-0 cursor-pointer py-2 pl-0 pr-4 flex items-center gap-1 select-none"
-              >
-                ← Back
-              </button>
-
-              {currentStepIndex < currentSteps.length - 1 ? (
-                <button
-                  id="continue-step-btn"
-                  onClick={handleNext}
-                  disabled={!isContinueEnabled()}
-                  className={`py-3 px-8 rounded-[12px] text-sm tracking-wider font-sans font-bold select-none cursor-pointer transition-all border
-                    ${
-                      isContinueEnabled()
-                        ? "text-white shadow-lg backdrop-blur-md scale-[1.01] hover:scale-[1.03] active:scale-95"
-                        : "opacity-40 cursor-not-allowed text-white/50 border-white/10"
-                    }
-                  `}
-                  style={{
-                    background: isContinueEnabled() 
-                      ? "linear-gradient(135deg, rgba(135, 70, 85, 0.85) 0%, rgba(108, 54, 66, 0.75) 100%)"
-                      : "rgba(108, 54, 66, 0.3)",
-                    borderColor: isContinueEnabled()
-                      ? "rgba(255, 255, 255, 0.35)"
-                      : "rgba(255, 255, 255, 0.12)",
-                    boxShadow: isContinueEnabled()
-                      ? "inset 0 1px 2px rgba(255, 255, 255, 0.3), 0 4px 14px rgba(110, 30, 45, 0.14)"
-                      : "none",
-                  }}
-                >
-                  Continue →
-                </button>
-              ) : (
-                <button
-                  id="generate-direction-btn"
-                  onClick={handleNext}
-                  disabled={!isContinueEnabled() && activeMode === "fingerprints"}
-                  className={`py-3 px-8 rounded-[12px] text-xs tracking-widest font-sans uppercase font-extrabold select-none cursor-pointer transition-all border
-                    ${
-                      (isContinueEnabled() || activeMode !== "fingerprints")
-                        ? "text-white shadow-lg backdrop-blur-md scale-[1.01] hover:scale-[1.03] active:scale-95"
-                        : "opacity-40 cursor-not-allowed text-white/50 border-white/10"
-                    }
-                  `}
-                  style={{
-                    background: (isContinueEnabled() || activeMode !== "fingerprints")
-                      ? "linear-gradient(135deg, rgba(135, 70, 85, 0.88) 0%, rgba(108, 54, 66, 0.78) 100%)"
-                      : "rgba(108, 54, 66, 0.3)",
-                    borderColor: (isContinueEnabled() || activeMode !== "fingerprints")
-                      ? "rgba(255, 255, 255, 0.35)"
-                      : "rgba(255, 255, 255, 0.12)",
-                    boxShadow: (isContinueEnabled() || activeMode !== "fingerprints")
-                      ? "inset 0 1px 2px rgba(255, 255, 255, 0.3), 0 4px 14px rgba(110, 30, 45, 0.14)"
-                      : "none",
-                  }}
-                >
-                  {activeMode === "visual" ? "Generate My Direction →" : (activeMode === "signature" ? "Generate My Mark →" : "Generate My Fingerprint →")}
-                </button>
-              )}
+ 
+             {/* 5. Navigation Bottom Row */}
+             <div id="quiz-action-bar" className="flex items-center justify-between mt-4">
+               <button
+                 id="back-step-btn"
+                 onClick={handleBack}
+                 className="font-serif text-[17px] text-black hover:opacity-75 transition-all bg-transparent border-0 cursor-pointer py-2 pl-0 pr-4 flex items-center gap-1 select-none"
+               >
+                 ← Back
+               </button>
+ 
+               {currentStepIndex < currentSteps.length - 1 ? (
+                 <button
+                   id="continue-step-btn"
+                   onClick={handleNext}
+                   disabled={!isContinueEnabled()}
+                   className={`py-3 px-8 rounded-[12px] text-sm tracking-wider font-sans font-bold select-none cursor-pointer transition-all border
+                     ${
+                       isContinueEnabled()
+                         ? (activeMode === "color"
+                             ? "text-[#1F2421] shadow-md hover:scale-[1.03] active:scale-95"
+                             : "text-white shadow-lg backdrop-blur-md scale-[1.01] hover:scale-[1.03] active:scale-95")
+                         : (activeMode === "color"
+                             ? "opacity-45 cursor-not-allowed text-[#1F2421]/55"
+                             : "opacity-40 cursor-not-allowed text-white/50")
+                     }
+                   `}
+                   style={{
+                     background: getButtonBg(),
+                     borderColor: isContinueEnabled()
+                       ? (activeMode === "color" ? "rgba(0, 0, 0, 0.15)" : "rgba(255, 255, 255, 0.35)")
+                       : (activeMode === "color" ? "rgba(0, 0, 0, 0.05)" : "rgba(255, 255, 255, 0.12)"),
+                     boxShadow: getButtonShadow(),
+                   }}
+                 >
+                   Continue →
+                 </button>
+               ) : (
+                 <button
+                   id="generate-direction-btn"
+                   onClick={handleNext}
+                   disabled={!isContinueEnabled()}
+                   className={`py-3 px-8 rounded-[12px] text-xs tracking-widest font-sans uppercase font-extrabold select-none cursor-pointer transition-all border
+                     ${
+                       isContinueEnabled()
+                         ? (activeMode === "color"
+                             ? "text-[#1F2421] shadow-md hover:scale-[1.03] active:scale-95"
+                             : "text-white shadow-lg backdrop-blur-md scale-[1.01] hover:scale-[1.03] active:scale-95")
+                         : (activeMode === "color"
+                             ? "opacity-45 cursor-not-allowed text-[#1F2421]/55"
+                             : "opacity-40 cursor-not-allowed text-white/50")
+                     }
+                   `}
+                   style={{
+                     background: getButtonBg(),
+                     borderColor: isContinueEnabled()
+                       ? (activeMode === "color" ? "rgba(0, 0, 0, 0.15)" : "rgba(255, 255, 255, 0.35)")
+                       : (activeMode === "color" ? "rgba(0, 0, 0, 0.05)" : "rgba(255, 255, 255, 0.12)"),
+                     boxShadow: getButtonShadow(),
+                   }}
+                 >
+                   {activeMode === "visual"
+                     ? "Generate My Direction →"
+                     : activeMode === "signature"
+                     ? "Generate My Mark →"
+                     : activeMode === "fingerprints"
+                     ? "Generate My Fingerprint →"
+                     : "Generate My Color World →"}
+                 </button>
+               )}
             </div>
           </div>
         )}
@@ -580,7 +670,110 @@ export function App() {
               </div>
             )}
 
-            {activeMode === "fingerprints" ? (
+            {activeMode === "color" ? (
+              <div className="flex flex-col gap-5 w-full">
+                {/* Header: Mode eyebrow and headline */}
+                <div className="space-y-1.5 text-center">
+                  <span id="results-mode-eyebrow" className="font-sans text-[10px] font-bold tracking-[0.25em] text-[#F4CCD8] uppercase select-none opacity-100 animate-fade-in filter drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">
+                    Color World Results
+                  </span>
+                  <h2 id="results-headline" className="font-serif text-[32px] leading-tight text-white select-none font-medium animate-fade-in filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">
+                    Your Living Spectrum
+                  </h2>
+                </div>
+
+                {/* Moodline in italics centered at the top */}
+                {generatedColorWorld?.moodLine && (
+                  <div 
+                    className="py-4 px-6 rounded-[24px] bg-black/65 border border-white/10 shadow-lg backdrop-blur-[6px] mt-1 mb-3 text-center"
+                    style={{
+                      boxShadow: "inset 0 1px 1px rgba(255,255,255,0.08), 0 4px 18px rgba(0,0,0,0.3)"
+                    }}
+                  >
+                    <p className="font-serif italic text-base font-semibold text-[#f7e6cf] leading-relaxed select-text" style={{ textShadow: "0 1px 2px rgba(0,0,0,0.5)" }}>
+                      "{generatedColorWorld.moodLine}"
+                    </p>
+                  </div>
+                )}
+
+                {/* Palette Colors as circles in a grid with name and hex below */}
+                <div className="grid grid-cols-2 gap-3.5 mt-1.5">
+                  {generatedColorWorld?.palette.map((color, idx) => {
+                    const isCopied = copiedColorIndex === idx;
+                    return (
+                      <div 
+                        key={idx} 
+                        className="flex flex-col items-center p-4 rounded-[22px] transition-all duration-300 border border-[#caa28f]/40 relative group overflow-hidden"
+                        style={{
+                          background: "linear-gradient(135deg, rgba(255, 252, 250, 0.96) 0%, rgba(255, 238, 234, 0.90) 100%)",
+                          boxShadow: "0 6px 18px rgba(0, 0, 0, 0.25)",
+                        }}
+                      >
+                        {/* Circle Swatch */}
+                        <button
+                          onClick={() => handleCopyColorHex(color.hex, idx)}
+                          className="w-14 h-14 rounded-full border border-black/15 shadow-[0_4px_10px_rgba(0,0,0,0.12)] mb-2 relative overflow-hidden transition-all duration-300 hover:scale-[1.06] active:scale-95 cursor-pointer flex items-center justify-center"
+                          style={{ backgroundColor: color.hex }}
+                          title={`Click to copy: ${color.hex}`}
+                        >
+                          <span className="opacity-0 hover:opacity-100 transition-opacity duration-200 text-[8.5px] font-mono text-white bg-black/50 px-1.5 py-0.5 rounded-full uppercase select-none">
+                            Copy
+                          </span>
+                        </button>
+                        
+                        {/* Name & Role */}
+                        <span className="font-serif text-[13.5px] font-bold text-neutral-900 select-all text-center leading-tight truncate w-full px-0.5">
+                          {color.name}
+                        </span>
+                        
+                        <span className="font-sans text-[8.5px] font-extrabold tracking-wider uppercase text-neutral-500 select-none mt-1">
+                          {color.role || "color"}
+                        </span>
+
+                        {/* Hex displays with copy button */}
+                        <button
+                          onClick={() => handleCopyColorHex(color.hex, idx)}
+                          className={`mt-2.5 px-3 py-1 rounded-full font-mono text-[10.5px] font-semibold transition-all duration-200 border cursor-pointer select-none flex items-center gap-1
+                            ${isCopied 
+                              ? "bg-green-100 text-green-800 border-green-200 scale-102" 
+                              : "bg-white/90 hover:bg-white text-black border-black/15 hover:border-black/35 shadow-sm"
+                            }
+                          `}
+                        >
+                          {isCopied ? "✓ Copied" : color.hex}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Evolutionary Note Section */}
+                <div className="mt-4 p-5 rounded-[22px] border border-white/10 bg-black/65 backdrop-blur-[6px] space-y-3 text-center shadow-lg">
+                  <span className="font-sans text-[10px] font-bold tracking-widest text-[#F4CCD8] uppercase block select-none">
+                    Evolutionary Spectrum & Personal Choice
+                  </span>
+                  <div className="space-y-2 text-white/90">
+                    <p className="font-sans text-[13px] leading-relaxed font-semibold">
+                      This palette is a living range — not every color appears in every post. Let it breathe and evolve.
+                    </p>
+                    <p className="font-sans italic text-[12px] text-[#F4CCD8] leading-relaxed border-t border-white/10 pt-2 font-medium">
+                      If a color doesn’t resonate with you, simply pick your own and go from there or change it out.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Primary Action Button: Start Over */}
+                <div id="results-primary-nav" className="flex flex-col gap-3 mt-5 w-full">
+                  <button
+                    id="reset-restart-btn"
+                    onClick={handleStartOver}
+                    className="w-full py-3.5 rounded-[14px] font-sans text-xs tracking-[0.18em] border border-white/35 bg-white/10 text-white hover:bg-white/20 transition-all cursor-pointer text-center uppercase select-none font-bold shadow-md"
+                  >
+                    Start over
+                  </button>
+                </div>
+              </div>
+            ) : activeMode === "fingerprints" ? (
               <div className="flex flex-col gap-5 w-full">
                 {/* Header: Mode eyebrow and headline */}
                 <div className="space-y-1.5">
@@ -641,6 +834,67 @@ export function App() {
                     Use this exact combination every time. End of every Reel and carousel caption. On reposts of your own content. In your bio.
                   </p>
                 </div>
+
+                {/* 5-Category Deep Engine Analysis */}
+                {generatedFingerprint?.analysis && (
+                  <div className="mt-4 pt-5 border-t border-[#caa28f]/30 space-y-4 text-left select-none">
+                    <span className="font-sans text-[10px] font-bold tracking-widest text-[#8a3a5c] uppercase block">
+                      Engine Fingerprint Breakdown
+                    </span>
+
+                    <div className="space-y-3.5">
+                      {/* Repetition */}
+                      <div className="p-4 rounded-[18px] border border-[#caa28f]/20 bg-white/45 space-y-1 block">
+                        <span className="font-sans text-[9px] font-extrabold tracking-wider text-[#8a3a5c] block uppercase">
+                          ● Repetition & Cadence
+                        </span>
+                        <p className="font-serif text-[13.5px] text-neutral-900 leading-relaxed select-text font-medium italic">
+                          {generatedFingerprint.analysis.repetition}
+                        </p>
+                      </div>
+
+                      {/* Themes */}
+                      <div className="p-4 rounded-[18px] border border-[#caa28f]/20 bg-white/45 space-y-1 block">
+                        <span className="font-sans text-[9px] font-extrabold tracking-wider text-[#8a3a5c] block uppercase">
+                          ● Core Themes & Symbols
+                        </span>
+                        <p className="font-serif text-[13.5px] text-neutral-900 leading-relaxed select-text font-medium italic">
+                          {generatedFingerprint.analysis.themes}
+                        </p>
+                      </div>
+
+                      {/* Emotional Tone */}
+                      <div className="p-4 rounded-[18px] border border-[#caa28f]/20 bg-white/45 space-y-1 block">
+                        <span className="font-sans text-[9px] font-extrabold tracking-wider text-[#8a3a5c] block uppercase">
+                          ● Emotional Tone & Vibe
+                        </span>
+                        <p className="font-serif text-[13.5px] text-neutral-900 leading-relaxed select-text font-medium italic">
+                          {generatedFingerprint.analysis.emotionalTone}
+                        </p>
+                      </div>
+
+                      {/* Visual Consistency */}
+                      <div className="p-4 rounded-[18px] border border-[#caa28f]/20 bg-white/45 space-y-1 block">
+                        <span className="font-sans text-[9px] font-extrabold tracking-wider text-[#8a3a5c] block uppercase">
+                          ● Visual Consistency & Cohesion
+                        </span>
+                        <p className="font-serif text-[13.5px] text-neutral-900 leading-relaxed select-text font-medium italic">
+                          {generatedFingerprint.analysis.visualConsistency}
+                        </p>
+                      </div>
+
+                      {/* Which emojis feel strongest together */}
+                      <div className="p-4 rounded-[18px] border border-[#caa28f]/20 bg-white/45 space-y-1 block">
+                        <span className="font-sans text-[9px] font-extrabold tracking-wider text-[#8a3a5c] block uppercase">
+                          ● Strongest Interpersonal Resonance
+                        </span>
+                        <p className="font-serif text-[13.5px] text-neutral-900 leading-relaxed select-text font-medium italic">
+                          {generatedFingerprint.analysis.strongestCombination}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Fingerprint Fallback Visual Details */}
                 {fallbackData && (
@@ -904,13 +1158,35 @@ export function App() {
                   </div>
                 )}
 
+                {/* Sticker Creation Workflow Card for Signature Mark */}
+                {activeMode === "signature" && (
+                  <div className="p-5 mt-4 rounded-[22px] border border-[#caa28f]/40 bg-gradient-to-br from-[#fffdfc] to-[#fffaee] space-y-3.5 shadow-sm text-left select-none animate-fade-in">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-[#8a3a5c] shrink-0" />
+                      <span className="font-sans text-[10px] font-bold tracking-[0.2em] text-[#8a3a5c] uppercase block">
+                        Sticker Creation Workflow
+                      </span>
+                    </div>
+                    <div className="space-y-2">
+                      <p className="font-serif italic text-sm text-black/90 leading-relaxed font-semibold">
+                        Once you run your Pinterest searches and find the exact image that resonates:
+                      </p>
+                      <div className="p-3.5 bg-white/65 hover:bg-white/95 rounded-[14px] border border-[#caa28f]/20 transition-all duration-200">
+                        <p className="font-sans text-[12.5px] text-neutral-800 leading-relaxed font-medium">
+                          Save the image to your device, then go to <a href="https://www.remove.bg" target="_blank" rel="noopener noreferrer" className="text-[#8a3a5c] font-bold underline inline-flex items-center gap-0.5 hover:text-black transition-colors cursor-pointer">remove.bg <ExternalLink className="w-3 h-3" /></a> to make a clean digital sticker out of it from there.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Copy All & Start Over row buttons */}
                 <div id="results-primary-nav" className="flex flex-col gap-3.5 mt-6 w-full">
                   <button
                     id="copy-all-btn"
                     onClick={handleCopyAll}
                     className={`w-full py-4 rounded-[14px] font-sans font-extrabold text-xs tracking-[0.2em] transition-all cursor-pointer text-center uppercase select-none border-0 shadow-lg ${
-                      activeMode === "fingerprints" ? "text-neutral-900 font-extrabold" : "text-white"
+                      (activeMode === "fingerprints" || activeMode === "color") ? "text-neutral-900 font-extrabold" : "text-white"
                     }`}
                     style={{
                       backgroundColor: modeAccentColor,

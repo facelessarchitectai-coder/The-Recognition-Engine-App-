@@ -9,6 +9,7 @@ export interface Question {
 export const VISUAL_DIRECTION_STEPS = ["FEEL", "SPACE", "COLOR", "LIGHT", "ENERGY", "EXCLUDE", "REFERENCES"];
 export const SIGNATURE_MARK_STEPS = ["ESSENCE", "SYMBOL", "FORM", "PLACEMENT", "EXCLUDE", "REFERENCES"];
 export const FINGERPRINTS_STEPS = ["ESSENCE", "ENERGY", "SYMBOLS", "EXCLUDE"];
+export const COLOR_WORLD_STEPS = ["COLOR BEHAVIOR", "EMOTIONAL TONE", "ANCHOR", "EXCLUDE"];
 
 export const VISUAL_DIRECTION_QUESTIONS: Question[] = [
   {
@@ -238,6 +239,72 @@ export const FINGERPRINTS_QUESTIONS: Question[] = [
       "Random — emojis with no connection to each other",
       "Too literal — spelling out your name or niche",
       "Too many emojis to read as one signature"
+    ]
+  }
+];
+
+export const COLOR_WORLD_QUESTIONS: Question[] = [
+  {
+    id: "color_behavior",
+    stepName: "COLOR BEHAVIOR",
+    title: "How do colors function in your world?",
+    subtitle: "Not which colors. How they show up and repeat.",
+    options: [
+      "Muted. Pulled back. Like the saturation was intentionally removed.",
+      "Deep. Rich. Heavy tones that hold weight.",
+      "Warm. Amber, rust, honey — low, intimate light.",
+      "Cool. Steel, shadow, slate — detached and precise.",
+      "High contrast. Light and dark hitting each other directly.",
+      "Monochromatic. One color in many versions of itself.",
+      "Soft. Diffused, pale, blurred at the edges.",
+      "Bold. Color that announces itself."
+    ]
+  },
+  {
+    id: "emotional_tone",
+    stepName: "EMOTIONAL TONE",
+    title: "What feeling should the palette create in someone scrolling past?",
+    subtitle: "Color tone is emotional before it is visual.",
+    options: [
+      "Calm. Still. Nothing is rushing.",
+      "Controlled. Everything placed with intention.",
+      "Nostalgic. Like a memory you can't quite place.",
+      "Cinematic. Like a frame from something larger.",
+      "Dark. Heavy. Emotionally layered.",
+      "Sharp. Clean. Nothing unnecessary.",
+      "Surreal. Like reality is slightly off.",
+      "Warm and intimate — close, personal, interior."
+    ]
+  },
+  {
+    id: "color_anchor",
+    stepName: "ANCHOR",
+    title: "What grounds your palette? Pick the feeling of your dominant color.",
+    subtitle: "This is the color everything else organizes around.",
+    options: [
+      "A deep neutral — charcoal, navy, near-black",
+      "A warm earth — rust, terracotta, ochre",
+      "A cool neutral — grey, stone, concrete",
+      "A botanical — forest, moss, sage",
+      "A jewel tone — burgundy, emerald, sapphire",
+      "A blush — rose, dusty pink, mauve",
+      "A metallic — gold, bronze, copper",
+      "No anchor — my palette shifts and that's intentional"
+    ]
+  },
+  {
+    id: "color_exclude",
+    stepName: "EXCLUDE",
+    title: "What should your palette never feel like?",
+    subtitle: "Elimination is how your color world gets defined.",
+    options: [
+      "Bright and cheerful",
+      "Pastel and sweet",
+      "Neon or electric",
+      "Safe and corporate",
+      "Trendy — whatever everyone is using right now",
+      "Washed out and forgettable",
+      "Clashing without intention"
     ]
   }
 ];

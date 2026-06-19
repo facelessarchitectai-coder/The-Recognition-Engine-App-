@@ -5,19 +5,56 @@ export interface FallbackData {
   phrases: string[];
   isFallback: boolean;
   moodSummary: string;
-  palette: Array<{ name: string; hex: string }>;
+  palette: Array<{ name: string; hex: string; role?: string }>;
   textures: string[];
   composition: string;
   dos: string[];
   doNots: string[];
   emojis?: string[];
   explanation?: string;
+  moodLine?: string;
 }
 
 export function generateFallbackResult(
-  mode: "visual" | "signature" | "fingerprints",
+  mode: "visual" | "signature" | "fingerprints" | "color",
   selections: Record<string, string[]>
 ): FallbackData {
+  if (mode === "color") {
+    const selectedBehaviors = selections["color_behavior"] || [];
+    const selectedTones = selections["emotional_tone"] || [];
+    const selectedAnchors = selections["color_anchor"] || [];
+    
+    let moodLine = "An unhurried sanctuary of slow-shifting color, grounded in heavy earth and ancient silence.";
+    if (selectedTones.join(" ").toLowerCase().includes("dark") || selectedBehaviors.join(" ").toLowerCase().includes("deep")) {
+      moodLine = "A shadowed world where heavy obsidian anchors meet warm, flickering amber low light.";
+    } else if (selectedBehaviors.join(" ").toLowerCase().includes("soft") || selectedTones.join(" ").toLowerCase().includes("surreal")) {
+      moodLine = "A mist-shrouded quiet dawn of pale bone grey, velvet rose, and gentle soft blush pink reflection.";
+    }
+
+    const palette = [
+      { name: "Raw Obsidian", hex: "#0B0C10", role: "depth" },
+      { name: "Soft Blush Pink", hex: "#F4CCD8", role: "anchor" },
+      { name: "Whisper Pearl", hex: "#F3EFEC", role: "contrast" },
+      { name: "Dappled Olive", hex: "#4E584A", role: "neutral" },
+      { name: "Soft Blush", hex: "#E9C0B3", role: "accent" },
+      { name: "Dusty Peony", hex: "#C28B9C", role: "neutral" },
+      { name: "Slate Grey", hex: "#5C6B73", role: "contrast" },
+      { name: "Deep Charcoal", hex: "#1F2421", role: "depth" }
+    ];
+
+    return {
+      phrases: [],
+      isFallback: true,
+      moodSummary: moodLine,
+      moodLine,
+      palette,
+      textures: ["Washed linen weaves", "Aged pearl finishes with soft matte cream-white edges"],
+      composition: "Center-weighted flatlay framing.",
+      dos: ["Allow generous negative areas", "Blend soft blush pink lowlight with heavy base neutrals"],
+      doNots: ["Do not use highly saturated artificial neon gradients", "Avoid sterile corporate primary tones"]
+    };
+  }
+
   // Extract selections or set defaults
   const selectedFeels = selections["feel"] || selections["essence"] || [];
   const selectedSpaces = selections["space"] || selections["symbol"] || [];

@@ -70,14 +70,17 @@ async function startServer() {
 
       const ai = getAiClient();
 
-      if (mode === "fingerprints") {
-        const prompt = `You are a signature-emoji strategist. A creator wants a small consistent set of emojis (a fingerprint) to use at the end of captions on Reels and carousels, on reposts, and in their bio so it reads as their signature. Output ONLY a JSON object: { "emojis": ["emoji1", "emoji2", ...4 to 6 emojis], "explanation": "one short sentence on why this combination works" }. Pull emoji choices from their symbolic categories and energy. Avoid anything matching their EXCLUDE answers. The combination should feel intentional and repeatable.
+      if (mode === "color") {
+        const prompt = `You are a professional color systems strategist. A creator has described their strict color parameters: "${referencesText || ""}".
+${answers && answers.length > 0 ? `They also made these selections:\n${answers.map((ans: any) => `Question: "${ans.questionTitle}" (${ans.questionStep})\nSelected Options:\n${ans.selections.map((sel: string) => ` - "${sel}"`).join('\n')}`).join('\n\n')}` : ""}
 
-User Questionnaire State:
---- Questionnaire Selections ---
-${answers.map((ans: any) => `Question: "${ans.questionTitle}" (${ans.questionStep})
-Selected Options:
-${ans.selections.map((sel: string) => ` - "${sel}"`).join('\n')}`).join('\n\n')}`;
+Your task is to craft a generous, functional range of 5 to 15 colors.
+CRITICAL SYSTEM CONSTRAINTS:
+1. Pay deep attention to any "COLORS TO USE IN EVERYTHING" or specific colors they mention they will use. Make sure these are prominently featured in the palette.
+2. Under no circumstance should you include or touch colors they explicitly state they will "not touch" or "absolutely avoid". EXCLUDE those hues and tones entirely.
+3. This palette is living and expandable — it is not a locked set. Generate a generous range that reflects the full emotional, tonal, and sensory complexity of their inputs.
+
+Format and output ONLY a JSON object, no markdown, no backticks, no preamble. Format exactly: { "palette": [ { "name": "color name", "hex": "#hexcode", "role": "one word: anchor, depth, contrast, accent, or neutral" } ], "moodLine": "one sentence describing the feeling of this palette as a world — not a design brief, a world description" } Rules: between 5 and 15 colors. Each hex must be accurate and visually match the name. Actively avoid anything matching their EXCLUDE answers. Do not mention World Within Method or Faceless Architect.`;
 
         const response = await generateContentWithRetry(ai, 3, {
           model: "gemini-3.5-flash",
@@ -87,17 +90,25 @@ ${ans.selections.map((sel: string) => ` - "${sel}"`).join('\n')}`).join('\n\n')}
             responseSchema: {
               type: Type.OBJECT,
               properties: {
-                emojis: {
+                palette: {
                   type: Type.ARRAY,
-                  items: { type: Type.STRING },
-                  description: "An array of 4 to 6 emojis.",
+                  description: "A generous array of 5 to 15 colors representing the living palette range.",
+                  items: {
+                    type: Type.OBJECT,
+                    properties: {
+                      name: { type: Type.STRING, description: "The descriptive color name" },
+                      hex: { type: Type.STRING, description: "Accurate HEX color code starting with #" },
+                      role: { type: Type.STRING, description: "Role: anchor, contrast, accent, neutral, or depth" }
+                    },
+                    required: ["name", "hex", "role"]
+                  }
                 },
-                explanation: {
+                moodLine: {
                   type: Type.STRING,
-                  description: "One short sentence on why this combination works",
+                  description: "One evocative sentence describing the feeling of this palette as a world, reading like a world description, not a design brief."
                 }
               },
-              required: ["emojis", "explanation"]
+              required: ["palette", "moodLine"]
             }
           }
         });
@@ -115,23 +126,108 @@ ${ans.selections.map((sel: string) => ` - "${sel}"`).join('\n')}`).join('\n\n')}
         text = text.trim();
 
         const parsed = JSON.parse(text);
-        res.json({ success: true, emojis: parsed.emojis || [], explanation: parsed.explanation || "" });
+        res.json({
+          success: true,
+          palette: parsed.palette || [],
+          moodLine: parsed.moodLine || ""
+        });
+        return;
+      }
+
+      if (mode === "fingerprints") {
+        const prompt = `You are an elite signature-emoji strategist specializing in digital visual fingerprints.
+A creator has provided their Primary Emoji Set: "${referencesText || ""}".
+
+Analyze this specific set of emojis with deep intent.
+Your output must include a small consistent set of emojis (exactly 4 to 8 emojis) that acts as their repeatable visual signature, along with a deep, structured analysis covering these specific dimensions:
+1. Repetition - how the recurrence of these symbols or geometric shapes maintains visual cadence.
+2. Themes - the underlying symbolic themes (e.g. nature, technology, cosmic, gothic, etc.).
+3. Emotional Tone - the exact psychological atmosphere or emotional energy this set projects.
+4. Visual Consistency - how cohesive they look together in terms of colors, line-work, complexity, and styling.
+5. Strongest Combination - which specific 2 or 3 emojis in this set form the absolute strongest visual resonant core and why.
+
+Output ONLY a JSON object with the strict fields matching the schema. Do not make up extra fields. Avoid markdown formatting blocks.`;
+
+        const response = await generateContentWithRetry(ai, 3, {
+          model: "gemini-3.5-flash",
+          contents: prompt,
+          config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: Type.OBJECT,
+              properties: {
+                emojis: {
+                  type: Type.ARRAY,
+                  items: { type: Type.STRING },
+                  description: "An array of 4 to 8 emojis representing their final intentional signature set.",
+                },
+                explanation: {
+                  type: Type.STRING,
+                  description: "One short sentence explaining why this combination works as a timeless archive signature.",
+                },
+                analysis: {
+                  type: Type.OBJECT,
+                  properties: {
+                    repetition: {
+                      type: Type.STRING,
+                      description: "1-2 brief, professional sentences on repetition/cadence.",
+                    },
+                    themes: {
+                      type: Type.STRING,
+                      description: "1-2 brief, professional sentences on themes.",
+                    },
+                    emotionalTone: {
+                      type: Type.STRING,
+                      description: "1-2 brief, professional sentences on emotional tone and vibes.",
+                    },
+                    visualConsistency: {
+                      type: Type.STRING,
+                      description: "1-2 brief, professional sentences on visual consistency/color profiles.",
+                    },
+                    strongestCombination: {
+                      type: Type.STRING,
+                      description: "1-2 brief, professional sentences on which emojis form the strongest pair or trio.",
+                    }
+                  },
+                  required: ["repetition", "themes", "emotionalTone", "visualConsistency", "strongestCombination"]
+                }
+              },
+              required: ["emojis", "explanation", "analysis"]
+            }
+          }
+        });
+
+        let text = response.text ? response.text.trim() : "{}";
+        if (text.startsWith("```json")) {
+          text = text.substring(7);
+        }
+        if (text.startsWith("```")) {
+          text = text.substring(3);
+        }
+        if (text.endsWith("```")) {
+          text = text.substring(0, text.length - 3);
+        }
+        text = text.trim();
+
+        const parsed = JSON.parse(text);
+        res.json({
+          success: true,
+          emojis: parsed.emojis || [],
+          explanation: parsed.explanation || "",
+          analysis: parsed.analysis || null
+        });
         return;
       }
 
       // Instructions specifically targeting either Visual Direction or Signature Mark
-      let prompt = `You are a visual psychologist, creative curator, and design strategist for the "Visual Direction Generator™".
+      let prompt = `You are a visual psychologist, creative curator, and design strategist for the "${mode === 'visual' ? 'Visual Direction Generator' : 'Signature Mark Generator'}".
 Your task is to analyze the user's questionnaire choices, visual descriptors, and optional moodboard images to formulate EXACTLY 12 distinct, short (2 to 5 words), highly vivid, and beautiful Pinterest search phrases.
 
-User Questionnaire State:
 Mode: ${mode === 'visual' ? 'Visual Direction' : 'Signature Mark'}
 
---- Questionnaire Selections ---
-${answers.map((ans: any) => `Question: "${ans.questionTitle}" (${ans.questionStep})
-Selected Options:
-${ans.selections.map((sel: string) => ` - "${sel}"`).join('\n')}`).join('\n\n')}
+${referencesText ? `\n--- User Description of the Visuals ---\n"${referencesText}"\n` : ''}
 
-${referencesText ? `\n--- Optional User Description of the Visuals That Draw Them In ---\n"${referencesText}"\n` : ''}
+${answers && answers.length > 0 ? `\n--- Questionnaire Selections ---\n${answers.map((ans: any) => `Question: "${ans.questionTitle}" (${ans.questionStep})\nSelected Options:\n${ans.selections.map((sel: string) => ` - "${sel}"`).join('\n')}`).join('\n\n')}` : ""}
 
 ${refImages && refImages.length > 0 ? `\nNote: The user also provided ${refImages.length} reference image(s) attached as files. Please analyze these images for colors, textures, lighting, subject matter, or graphics and use their vibe as strong context for your phrases.` : ''}
 
