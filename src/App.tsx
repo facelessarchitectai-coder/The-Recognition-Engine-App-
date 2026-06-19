@@ -262,7 +262,7 @@ export function App() {
               className="font-sans text-[11px] font-extrabold tracking-[0.28em] text-white uppercase select-none z-10 filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]"
               style={{ textShadow: "0 1.5px 3.5px rgba(0,0,0,0.6)" }}
             >
-              WORLD WITHIN METHOD<sup className="text-[9px] ml-0.5 font-bold" style={{ color: modeAccentColor }}>™</sup>
+              world within method recognition-engine<sup className="text-[9px] ml-0.5 font-bold" style={{ color: modeAccentColor }}>™</sup>
             </span>
 
             {/* 2. Centered side-by-side Toggle Pill Tabs */}
