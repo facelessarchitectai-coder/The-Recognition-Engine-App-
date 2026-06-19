@@ -1,0 +1,6 @@
+{
+  "name": "Visual Direction Generator",
+  "description": "A quiet, beautiful multi-step questionnaire that translates your visual sensibilities and identity into polished Pinterest search phrases using advanced server-side AI.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
