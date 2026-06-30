@@ -61,6 +61,7 @@ export function App() {
   const [copiedFingerprint, setCopiedFingerprint] = useState(false);
   const [showModeSelector, setShowModeSelector] = useState(false);
   const [isFacelessCreator, setIsFacelessCreator] = useState(false);
+  const [showAdvisory, setShowAdvisory] = useState(true);
   const [fallbackData, setFallbackData] = useState<FallbackData | null>(null);
   const [fallbackErrorMessage, setFallbackErrorMessage] = useState<string>("");
   const [generatedBlueprint, setGeneratedBlueprint] = useState<{
@@ -378,6 +379,51 @@ export function App() {
             {/* Top Empty Space to lower all contents */}
             <div className="h-4 w-full z-10" />
 
+            {/* Advisory setup warning banner */}
+            {showAdvisory && (
+              <div 
+                id="advisory-banner"
+                className="w-full max-w-[380px] mb-6 p-5 rounded-[22px] bg-black/75 border border-white/20 shadow-[0_8px_32px_rgba(0,0,0,0.5)] backdrop-blur-[8px] text-left animate-fade-in z-25 relative overflow-hidden"
+              >
+                {/* Accent glow line at top */}
+                <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-[#caa28f]/20 via-[#4fa89a]/75 to-[#caa28f]/20" />
+                
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5 p-1.5 rounded-full bg-[#4fa89a]/25 border border-[#4fa89a]/50 text-[#4fa89a]">
+                    <Sparkles className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="space-y-2.5">
+                    <span className="font-sans text-[9px] font-black tracking-widest text-[#caa28f] uppercase block">
+                      Identity Pre-requisite Note
+                    </span>
+                    <p className="font-serif italic text-[12.5px] leading-relaxed text-white/95">
+                      "For best results, complete the <span className="font-sans not-italic font-extrabold text-[#4fa89a]">World Within Method™</span> and <span className="font-sans not-italic font-extrabold text-[#4fa89a]">World Within App™</span> before using the Recognition Engine™. This tool works best when your identity foundation is already defined."
+                    </p>
+                    <p className="font-sans text-[10.5px] text-neutral-300 font-bold leading-normal">
+                      We want you to explore freely! Dismiss this note below to access and experiment with all four generation engines.
+                    </p>
+                    
+                    <div className="pt-1.5 flex items-center gap-3">
+                      <button
+                        id="dismiss-advisory-got-it"
+                        onClick={() => setShowAdvisory(false)}
+                        className="px-4 py-1.5 rounded-full bg-[#4fa89a] hover:bg-[#3a9d92] text-black font-sans font-black text-[9.5px] tracking-widest uppercase transition-all duration-200 cursor-pointer shadow-[0_2px_8px_rgba(79,168,154,0.3)]"
+                      >
+                        Got it
+                      </button>
+                      <button
+                        id="dismiss-advisory-continue"
+                        onClick={() => setShowAdvisory(false)}
+                        className="px-3 py-1 text-white/60 hover:text-white font-sans text-[9px] font-bold tracking-wider uppercase transition-all duration-200 cursor-pointer underline underline-offset-2 bg-transparent border-0"
+                      >
+                        Continue anyway
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* 1. Centered Tracked eyebrow label */}
             <span 
               className="font-sans text-[11px] font-extrabold tracking-[0.28em] text-white uppercase select-none z-10 filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]"
@@ -391,11 +437,11 @@ export function App() {
               <button
                 id="faceless-creator-toggle"
                 onClick={() => setIsFacelessCreator(!isFacelessCreator)}
-                className={`px-4 py-1.5 rounded-full border text-[11px] tracking-wider transition-all duration-350 font-serif italic cursor-pointer select-none bg-transparent
+                className={`px-5 py-2 rounded-full border text-[10.5px] tracking-widest transition-all duration-350 font-sans font-black uppercase cursor-pointer select-none bg-transparent
                   ${
                     isFacelessCreator
-                      ? "border-[#4fa89a] text-[#4fa89a] shadow-[0_0_12px_rgba(79,168,154,0.4)] font-semibold"
-                      : "border-white/30 text-white/80 hover:border-white/60 hover:text-white"
+                      ? "border-[#4fa89a] text-[#4fa89a] bg-[#4fa89a]/10 shadow-[0_0_15px_rgba(79,168,154,0.45)]"
+                      : "border-white/40 text-white/95 hover:border-white/70 hover:text-white hover:bg-white/5"
                   }
                 `}
               >
@@ -750,11 +796,11 @@ export function App() {
               <button
                 id="faceless-creator-results-toggle"
                 onClick={() => setIsFacelessCreator(!isFacelessCreator)}
-                className={`px-4 py-1.5 rounded-full border text-[11px] tracking-wider transition-all duration-350 font-serif italic cursor-pointer select-none bg-black/40 text-white backdrop-blur-[4px]
+                className={`px-5 py-2 rounded-full border text-[10.5px] tracking-widest transition-all duration-350 font-sans font-black uppercase cursor-pointer select-none bg-black/50 text-white backdrop-blur-[4px]
                   ${
                     isFacelessCreator
-                      ? "border-[#4fa89a] text-[#4fa89a] shadow-[0_0_12px_rgba(79,168,154,0.45)] font-semibold bg-[#4fa89a]/10"
-                      : "border-white/20 hover:border-white/50"
+                      ? "border-[#4fa89a] text-[#4fa89a] shadow-[0_0_15px_rgba(79,168,154,0.45)] bg-[#4fa89a]/10"
+                      : "border-white/30 hover:border-white/60 hover:bg-white/5"
                   }
                 `}
               >
