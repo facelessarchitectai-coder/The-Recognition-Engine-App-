@@ -60,8 +60,37 @@ export function App() {
   const [copiedAll, setCopiedAll] = useState(false);
   const [copiedFingerprint, setCopiedFingerprint] = useState(false);
   const [showModeSelector, setShowModeSelector] = useState(false);
+  const [isFacelessCreator, setIsFacelessCreator] = useState(false);
   const [fallbackData, setFallbackData] = useState<FallbackData | null>(null);
   const [fallbackErrorMessage, setFallbackErrorMessage] = useState<string>("");
+  const [generatedBlueprint, setGeneratedBlueprint] = useState<{
+    worldDirection: {
+      type: string;
+      meaning: string;
+      exists: string;
+      doesNotBelong: string;
+      repeats: string;
+      breaks: string;
+    };
+    environment: {
+      spaces: string;
+      emotionalTone: string;
+      worldVsBackground: string;
+    };
+    visualLanguage: {
+      colorBehavior: string;
+      tone: string;
+      energy: string;
+      styling: string;
+      lighting: string;
+      repeatingColors: string;
+      environmentType: string;
+      composition: string;
+      emotionalFeel: string;
+      colorsThatBreak: string;
+      notBelongVisual: string;
+    };
+  } | null>(null);
 
   // Mode settings
   const modeAccentColor = activeMode === "visual"
@@ -213,15 +242,18 @@ export function App() {
             explanation: data.explanation || "",
             analysis: data.analysis || null,
           });
+          setGeneratedBlueprint(null);
           setScreen("results");
         } else if (activeMode === "color") {
           setGeneratedColorWorld({
             palette: data.palette || [],
             moodLine: data.moodLine || "",
           });
+          setGeneratedBlueprint(null);
           setScreen("results");
         } else {
           setGeneratedPhrases(data.phrases);
+          setGeneratedBlueprint(data.blueprint || null);
           setScreen("results");
         }
       } else {
@@ -234,13 +266,16 @@ export function App() {
             emojis: fallback.emojis || [],
             explanation: fallback.explanation || "",
           });
+          setGeneratedBlueprint(null);
         } else if (activeMode === "color") {
           setGeneratedColorWorld({
             palette: (fallback.palette as any) || [],
             moodLine: fallback.moodLine || "",
           });
+          setGeneratedBlueprint(null);
         } else {
           setGeneratedPhrases(fallback.phrases);
+          setGeneratedBlueprint((fallback.blueprint as any) || null);
         }
         setScreen("results");
       }
@@ -254,13 +289,16 @@ export function App() {
           emojis: fallback.emojis || [],
           explanation: fallback.explanation || "",
         });
+        setGeneratedBlueprint(null);
       } else if (activeMode === "color") {
         setGeneratedColorWorld({
           palette: (fallback.palette as any) || [],
           moodLine: fallback.moodLine || "",
         });
+        setGeneratedBlueprint(null);
       } else {
         setGeneratedPhrases(fallback.phrases);
+        setGeneratedBlueprint((fallback.blueprint as any) || null);
       }
       setScreen("results");
     } finally {
@@ -276,6 +314,7 @@ export function App() {
     setCurrentStepIndex(0);
     setGeneratedFingerprint(null);
     setGeneratedColorWorld(null);
+    setGeneratedBlueprint(null);
     setCopiedFingerprint(false);
     setFallbackData(null);
     setFallbackErrorMessage("");
@@ -347,6 +386,23 @@ export function App() {
               world within method recognition-engine<sup className="text-[9px] ml-0.5 font-bold" style={{ color: modeAccentColor }}>™</sup>
             </span>
 
+            {/* Faceless Creator Toggle Button */}
+            <div className="mt-5 mb-1 z-20">
+              <button
+                id="faceless-creator-toggle"
+                onClick={() => setIsFacelessCreator(!isFacelessCreator)}
+                className={`px-4 py-1.5 rounded-full border text-[11px] tracking-wider transition-all duration-350 font-serif italic cursor-pointer select-none bg-transparent
+                  ${
+                    isFacelessCreator
+                      ? "border-[#4fa89a] text-[#4fa89a] shadow-[0_0_12px_rgba(79,168,154,0.4)] font-semibold"
+                      : "border-white/30 text-white/80 hover:border-white/60 hover:text-white"
+                  }
+                `}
+              >
+                {isFacelessCreator ? "✨ Faceless Creator (Active)" : "I don't have a character (Faceless Creator)"}
+              </button>
+            </div>
+
             {/* 2. Centered side-by-side Toggle Pill Tabs */}
             <div className="flex flex-wrap gap-2 w-full max-w-[380px] justify-center mt-6 z-10">
               <button
@@ -355,8 +411,13 @@ export function App() {
                 className={`flex-1 py-1.5 px-2 rounded-full text-[10px] tracking-wider transition-all duration-300 font-sans font-bold uppercase select-none border cursor-pointer text-center
                   ${
                     activeMode === "visual"
-                      ? "bg-[#3a9d92] text-white border-transparent shadow-[0_3px_10px_rgba(58,157,146,0.4)]"
+                      ? "bg-[#3a9d92] text-white border-transparent"
                       : "border-white/20 bg-black/35 backdrop-blur-[4px] text-white/85 hover:border-white/40 hover:bg-black/55 hover:text-white"
+                  }
+                  ${
+                    isFacelessCreator
+                      ? "border-[#4fa89a]/70 shadow-[0_0_12px_rgba(79,168,154,0.5)]"
+                      : ""
                   }
                 `}
               >
@@ -368,8 +429,13 @@ export function App() {
                 className={`flex-1 py-1.5 px-2 rounded-full text-[10px] tracking-wider transition-all duration-300 font-sans font-bold uppercase select-none border cursor-pointer text-center
                   ${
                     activeMode === "signature"
-                      ? "bg-[#8a3a5c] text-white border-transparent shadow-[0_3px_10px_rgba(138,58,92,0.4)]"
+                      ? "bg-[#8a3a5c] text-white border-transparent"
                       : "border-white/20 bg-black/35 backdrop-blur-[4px] text-white/85 hover:border-white/40 hover:bg-black/55 hover:text-white"
+                  }
+                  ${
+                    isFacelessCreator
+                      ? "border-[#4fa89a]/70 shadow-[0_0_12px_rgba(79,168,154,0.5)]"
+                      : ""
                   }
                 `}
               >
@@ -381,8 +447,13 @@ export function App() {
                 className={`flex-1 py-1.5 px-2 rounded-full text-[10px] tracking-wider transition-all duration-300 font-sans font-bold uppercase select-none border cursor-pointer text-center
                   ${
                     activeMode === "fingerprints"
-                      ? "bg-[#F3A9C8] text-neutral-950 border-transparent shadow-[0_3px_10px_rgba(243,169,200,0.5)]"
+                      ? "bg-[#F3A9C8] text-neutral-950 border-transparent"
                       : "border-white/20 bg-black/35 backdrop-blur-[4px] text-white/85 hover:border-white/40 hover:bg-black/55 hover:text-white"
+                  }
+                  ${
+                    isFacelessCreator
+                      ? "border-[#4fa89a]/70 shadow-[0_0_12px_rgba(79,168,154,0.5)]"
+                      : ""
                   }
                 `}
               >
@@ -394,14 +465,51 @@ export function App() {
                 className={`flex-1 py-1.5 px-2 rounded-full text-[10px] tracking-wider transition-all duration-300 font-sans font-bold uppercase select-none border cursor-pointer text-center
                   ${
                     activeMode === "color"
-                      ? "bg-[#F4CCD8] text-[#1F2421] border-transparent shadow-[0_3px_10px_rgba(244,204,216,0.35)]"
+                      ? "bg-[#F4CCD8] text-[#1F2421] border-transparent"
                       : "border-white/20 bg-black/35 backdrop-blur-[4px] text-white/85 hover:border-white/40 hover:bg-black/55 hover:text-white"
+                  }
+                  ${
+                    isFacelessCreator
+                      ? "border-[#4fa89a]/70 shadow-[0_0_12px_rgba(79,168,154,0.5)]"
+                      : ""
                   }
                 `}
               >
                 Color World
               </button>
             </div>
+
+            {/* Faceless Creator Alignment Map Card */}
+            {isFacelessCreator && (
+              <div 
+                className="mt-4 mx-auto w-full max-w-[380px] p-4 rounded-[20px] bg-black/60 border border-[#4fa89a]/45 shadow-[0_0_15px_rgba(79,168,154,0.3)] backdrop-blur-[6px] text-left text-white space-y-2 animate-fade-in z-10"
+              >
+                <div className="flex items-center gap-1.5 border-b border-white/10 pb-1.5 mb-1.5">
+                  <span className="w-2 h-2 rounded-full bg-[#4fa89a] animate-pulse" />
+                  <span className="font-sans text-[10px] font-black tracking-widest text-[#4fa89a] uppercase">
+                    Faceless Creator Alignment Map
+                  </span>
+                </div>
+                <div className="space-y-1.5 text-[11px] font-medium text-white/90">
+                  <p className="flex items-start gap-1.5">
+                    <span className="text-[#4fa89a] font-bold">✓</span>
+                    <span><strong className="text-white">Visual Direction:</strong> Fully applies. Defines architectural spaces, horizons, and photography style.</span>
+                  </p>
+                  <p className="flex items-start gap-1.5">
+                    <span className="text-[#4fa89a] font-bold">⚬</span>
+                    <span><strong className="text-white">Signature Mark:</strong> Applies but reframed to visual symbols, overlays, and stickers (no characters).</span>
+                  </p>
+                  <p className="flex items-start gap-1.5">
+                    <span className="text-[#4fa89a] font-bold">✓</span>
+                    <span><strong className="text-white">Emoji Archive:</strong> Fully applies. Forms a cohesive symbolic fingerprint for text captions.</span>
+                  </p>
+                  <p className="flex items-start gap-1.5">
+                    <span className="text-[#4fa89a] font-bold">✓</span>
+                    <span><strong className="text-white">Color World:</strong> Fully applies. Establishes the core adaptive palette and color behavior.</span>
+                  </p>
+                </div>
+              </div>
+            )}
  
              {/* 3. Centered Large Elegant Serif Title */}
              <div className="mt-14 w-full z-10">
@@ -637,6 +745,23 @@ export function App() {
            ======================================================= */}
         {screen === "results" && (
           <div className="flex flex-col gap-6 w-full animate-fade-in text-left">
+            {/* Faceless Creator Toggle Button on Results Page */}
+            <div className="flex justify-center mb-1 z-15 w-full">
+              <button
+                id="faceless-creator-results-toggle"
+                onClick={() => setIsFacelessCreator(!isFacelessCreator)}
+                className={`px-4 py-1.5 rounded-full border text-[11px] tracking-wider transition-all duration-350 font-serif italic cursor-pointer select-none bg-black/40 text-white backdrop-blur-[4px]
+                  ${
+                    isFacelessCreator
+                      ? "border-[#4fa89a] text-[#4fa89a] shadow-[0_0_12px_rgba(79,168,154,0.45)] font-semibold bg-[#4fa89a]/10"
+                      : "border-white/20 hover:border-white/50"
+                  }
+                `}
+              >
+                {isFacelessCreator ? "✨ Faceless Creator (Active)" : "I don't have a character (Faceless Creator)"}
+              </button>
+            </div>
+
             {/* High-demand / Fallback Notice banner */}
             {fallbackData && (
               <div 
@@ -671,7 +796,9 @@ export function App() {
             )}
 
             {activeMode === "color" ? (
-              <div className="flex flex-col gap-5 w-full">
+              <div className={`flex flex-col gap-5 w-full rounded-[24px] transition-all duration-500
+                ${isFacelessCreator ? "p-4 bg-black/10 border border-[#4fa89a]/50 shadow-[0_0_20px_rgba(79,168,154,0.4)]" : ""}
+              `}>
                 {/* Header: Mode eyebrow and headline */}
                 <div className="space-y-1.5 text-center">
                   <span id="results-mode-eyebrow" className="font-sans text-[10px] font-bold tracking-[0.25em] text-[#F4CCD8] uppercase select-none opacity-100 animate-fade-in filter drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">
@@ -774,7 +901,9 @@ export function App() {
                 </div>
               </div>
             ) : activeMode === "fingerprints" ? (
-              <div className="flex flex-col gap-5 w-full">
+              <div className={`flex flex-col gap-5 w-full rounded-[24px] transition-all duration-500
+                ${isFacelessCreator ? "p-4 bg-black/10 border border-[#4fa89a]/50 shadow-[0_0_20px_rgba(79,168,154,0.4)]" : ""}
+              `}>
                 {/* Header: Mode eyebrow and headline */}
                 <div className="space-y-1.5">
                   <span id="results-mode-eyebrow" className="font-sans text-[10px] font-bold tracking-[0.25em] text-black uppercase select-none opacity-80 animate-fade-in">
@@ -960,7 +1089,9 @@ export function App() {
                 </div>
               </div>
             ) : (
-              <div className="flex flex-col gap-6 w-full">
+              <div className={`flex flex-col gap-6 w-full rounded-[24px] transition-all duration-500
+                ${isFacelessCreator ? "p-4 bg-black/10 border border-[#4fa89a]/50 shadow-[0_0_20px_rgba(79,168,154,0.4)]" : ""}
+              `}>
                 {/* Header: Mode eyebrow and headline */}
                 <div className="space-y-2">
                   <span id="results-mode-eyebrow" className="font-sans text-[10px] font-bold tracking-[0.25em] text-black uppercase select-none">
@@ -973,6 +1104,18 @@ export function App() {
                     Tap a phrase to copy it, or copy all and paste straight into Pinterest.
                   </p>
                 </div>
+
+                {/* Signature Mark Reframed Note */}
+                {activeMode === "signature" && isFacelessCreator && (
+                  <div className="p-4 rounded-[20px] bg-[#4fa89a]/10 border border-[#4fa89a]/40 shadow-[0_0_12px_rgba(79,168,154,0.2)] text-black space-y-1 animate-fade-in">
+                    <span className="font-sans text-[10px] font-black tracking-widest text-[#2b6d61] uppercase block">
+                      Faceless Creator Curation Note
+                    </span>
+                    <p className="font-sans text-xs text-neutral-800 font-bold leading-relaxed">
+                      Your Signature Mark applies, but it is reframed to visual symbols, overlays, and sticker placements rather than character-centric styling.
+                    </p>
+                  </div>
+                )}
 
                 {/* 12 Result Phrases list */}
                 <div id="results-phrases-scaffolder" className="grid grid-cols-1 gap-3 mt-2">
@@ -1055,6 +1198,224 @@ export function App() {
                   })}
                 </div>
 
+                {/* ----------------- CURATION BLUEPRINT SPECIFICATION PORTFOLIO ----------------- */}
+                {generatedBlueprint && (
+                  <div className="mt-6 pt-6 border-t border-[#caa28f]/40 space-y-6 text-black select-text">
+                    <div className="space-y-1 text-center sm:text-left">
+                      <span className="font-sans text-[11px] font-extrabold tracking-[0.25em] text-[#8a3a5c] uppercase block select-none font-black">
+                        SYSTEM CURATION SPECIFICATIONS
+                      </span>
+                      <h3 className="font-serif text-2xl font-black text-black leading-tight">
+                        Curation Blueprint Portfolio
+                      </h3>
+                      <p className="font-sans text-xs text-neutral-800 font-bold">
+                        Phase 2 & Phase 3 authoritative specs compiled for your brand.
+                      </p>
+                    </div>
+
+                    {/* Section 1: Committed World Direction */}
+                    <div 
+                      className={`p-5 rounded-[22px] border-[1.5px] bg-white space-y-3.5 shadow-md transition-all duration-350 hover:border-black
+                        ${isFacelessCreator ? "border-[#4fa89a] shadow-[0_0_15px_rgba(79,168,154,0.35)]" : "border-[#caa28f]"}
+                      `}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-[#8a3a5c]" />
+                        <span className="font-sans text-xs font-black tracking-widest text-[#8a3a5c] uppercase">
+                          Phase 2 • Committed World Direction
+                        </span>
+                      </div>
+
+                      <div className="space-y-2 border-b border-[#caa28f]/20 pb-3">
+                        <span className="font-sans text-[10px] font-black tracking-wider text-neutral-500 uppercase block">
+                          Committed Main Axis:
+                        </span>
+                        <div className="inline-block px-3.5 py-1.5 rounded-full bg-[#8a3a5c] text-white font-sans text-xs font-black tracking-widest uppercase shadow-sm">
+                          {generatedBlueprint.worldDirection.type}
+                        </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <span className="font-sans text-[10px] font-black tracking-wider text-neutral-500 uppercase block">
+                          Meaning & Curation Controls:
+                        </span>
+                        <p className="font-sans text-[13.5px] font-black text-black leading-relaxed">
+                          {generatedBlueprint.worldDirection.meaning}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Section 2: World Rules */}
+                    <div 
+                      className={`p-5 rounded-[22px] border-[1.5px] bg-white space-y-4 shadow-md transition-all duration-350 hover:border-black
+                        ${isFacelessCreator ? "border-[#4fa89a] shadow-[0_0_15px_rgba(79,168,154,0.35)]" : "border-[#caa28f]"}
+                      `}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-black" />
+                        <span className="font-sans text-xs font-black tracking-widest text-black uppercase">
+                          Phase 2 • World Rules System
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="p-3.5 rounded-[16px] bg-[#f9f9f9] border border-black/10 space-y-1">
+                          <span className="font-sans text-[9px] font-black tracking-widest text-emerald-800 uppercase block">
+                            ✓ What Exists in the World
+                          </span>
+                          <p className="font-sans text-[13px] font-black text-black leading-relaxed">
+                            {generatedBlueprint.worldDirection.exists}
+                          </p>
+                        </div>
+
+                        <div className="p-3.5 rounded-[16px] bg-[#f9f9f9] border border-black/10 space-y-1">
+                          <span className="font-sans text-[9px] font-black tracking-widest text-amber-800 uppercase block">
+                            ● What Consistently Repeats
+                          </span>
+                          <p className="font-sans text-[13px] font-black text-black leading-relaxed">
+                            {generatedBlueprint.worldDirection.repeats}
+                          </p>
+                        </div>
+
+                        <div className="p-3.5 rounded-[16px] bg-[#fcf5f6] border border-rose-200 space-y-1 md:col-span-2">
+                          <span className="font-sans text-[9px] font-black tracking-widest text-rose-800 uppercase block">
+                            ✗ What Breaks the World / Does NOT Belong
+                          </span>
+                          <div className="space-y-2">
+                            <p className="font-sans text-[13px] font-black text-[#5c1f30] leading-relaxed">
+                              <span className="text-[#8a3a5c] font-black">Shatters Illusion:</span> {generatedBlueprint.worldDirection.breaks}
+                            </p>
+                            <p className="font-sans text-[13px] font-black text-[#5c1f30] border-t border-rose-100 pt-1.5 leading-relaxed">
+                              <span className="text-[#8a3a5c] font-black">Does Not Belong:</span> {generatedBlueprint.worldDirection.doesNotBelong}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Section 3: Environment */}
+                    <div 
+                      className={`p-5 rounded-[22px] border-[1.5px] bg-white space-y-3.5 shadow-md transition-all duration-350 hover:border-black
+                        ${isFacelessCreator ? "border-[#4fa89a] shadow-[0_0_15px_rgba(79,168,154,0.35)]" : "border-[#caa28f]"}
+                      `}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-[#3a9d92]" />
+                        <span className="font-sans text-xs font-black tracking-widest text-[#3a9d92] uppercase">
+                          Phase 2 • Environment Parameters
+                        </span>
+                      </div>
+
+                      <div className="space-y-3">
+                        <div className="space-y-0.5">
+                          <span className="font-sans text-[9px] font-black tracking-wider text-neutral-500 uppercase block">
+                            Permitted Spaces & Background Horizons:
+                          </span>
+                          <p className="font-sans text-[13px] font-black text-black leading-relaxed">
+                            {generatedBlueprint.environment.spaces}
+                          </p>
+                        </div>
+
+                        <div className="p-3.5 rounded-[16px] bg-[#f5fbfb] border border-[#3a9d92]/20 space-y-1">
+                          <span className="font-sans text-[9px] font-black tracking-widest text-[#3a9d92] uppercase block">
+                            Emotional Tone & Aesthetic Feel:
+                          </span>
+                          <p className="font-sans text-[13px] font-black text-black leading-relaxed">
+                            {generatedBlueprint.environment.emotionalTone}
+                          </p>
+                        </div>
+
+                        <div className="p-3 rounded-[14px] bg-neutral-50 border border-neutral-200 text-[11px] font-bold text-neutral-800 leading-relaxed italic">
+                          <span className="font-sans font-black text-black uppercase not-italic">CRITICAL MEMO: </span>
+                          {generatedBlueprint.environment.worldVsBackground}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Section 4: Visual Language Specifications */}
+                    <div 
+                      className={`p-5 rounded-[22px] border-[1.5px] bg-white space-y-4 shadow-md transition-all duration-350 hover:border-black
+                        ${isFacelessCreator ? "border-[#4fa89a] shadow-[0_0_15px_rgba(79,168,154,0.35)]" : "border-[#caa28f]"}
+                      `}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-[#d4b053]" />
+                        <span className="font-sans text-xs font-black tracking-widest text-black uppercase">
+                          Phase 3 • Visual Language Spec Dictionary
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {/* Column 1 */}
+                        <div className="space-y-3 text-left">
+                          <div className="space-y-0.5">
+                            <span className="font-sans text-[9px] font-black text-neutral-500 uppercase tracking-wider block font-black">Color Behavior:</span>
+                            <p className="font-sans text-[13px] font-black text-black leading-relaxed">{generatedBlueprint.visualLanguage.colorBehavior}</p>
+                          </div>
+                          
+                          <div className="space-y-0.5">
+                            <span className="font-sans text-[9px] font-black text-neutral-500 uppercase tracking-wider block font-black">Visual Tone & Feeling:</span>
+                            <p className="font-sans text-[13px] font-black text-black leading-relaxed">{generatedBlueprint.visualLanguage.tone}</p>
+                          </div>
+
+                          <div className="space-y-0.5">
+                            <span className="font-sans text-[9px] font-black text-neutral-500 uppercase tracking-wider block font-black">Energy Pattern:</span>
+                            <p className="font-sans text-[13px] font-black text-black leading-relaxed">{generatedBlueprint.visualLanguage.energy}</p>
+                          </div>
+
+                           <div className={`space-y-0.5 transition-all duration-350 ${isFacelessCreator ? "opacity-35 select-none" : ""}`}>
+                            <span className="font-sans text-[9px] font-black text-neutral-500 uppercase tracking-wider block font-black">Styling Direction:</span>
+                            <p className="font-sans text-[13px] font-black text-black leading-relaxed">
+                              {isFacelessCreator ? "Not applicable (Faceless Creator)" : generatedBlueprint.visualLanguage.styling}
+                            </p>
+                          </div>
+
+                          <div className="space-y-0.5">
+                            <span className="font-sans text-[9px] font-black text-neutral-500 uppercase tracking-wider block font-black">Lighting Behavior:</span>
+                            <p className="font-sans text-[13px] font-black text-black leading-relaxed">{generatedBlueprint.visualLanguage.lighting}</p>
+                          </div>
+                        </div>
+
+                        {/* Column 2 */}
+                        <div className="space-y-3 text-left">
+                          <div className="space-y-0.5">
+                            <span className="font-sans text-[9px] font-black text-neutral-500 uppercase tracking-wider block font-black">Repeating Color Pairings:</span>
+                            <p className="font-sans text-[13px] font-black text-black leading-relaxed">{generatedBlueprint.visualLanguage.repeatingColors}</p>
+                          </div>
+
+                          <div className="space-y-0.5">
+                            <span className="font-sans text-[9px] font-black text-neutral-500 uppercase tracking-wider block font-black">Environment Type & Horizon:</span>
+                            <p className="font-sans text-[13px] font-black text-black leading-relaxed">{generatedBlueprint.visualLanguage.environmentType}</p>
+                          </div>
+
+                          <div className="space-y-0.5">
+                            <span className="font-sans text-[9px] font-black text-neutral-500 uppercase tracking-wider block font-black">Composition & Framing:</span>
+                            <p className="font-sans text-[13px] font-black text-black leading-relaxed">{generatedBlueprint.visualLanguage.composition}</p>
+                          </div>
+
+                          <div className="space-y-0.5">
+                            <span className="font-sans text-[9px] font-black text-neutral-500 uppercase tracking-wider block font-black">Unified Emotional Feel:</span>
+                            <p className="font-sans text-[13px] font-black text-black leading-relaxed">{generatedBlueprint.visualLanguage.emotionalFeel}</p>
+                          </div>
+                        </div>
+
+                        {/* Full Width Exclusions */}
+                        <div className="sm:col-span-2 pt-3 border-t border-[#caa28f]/20 space-y-2.5">
+                          <div className="space-y-0.5">
+                            <span className="font-sans text-[9.5px] font-black text-rose-800 uppercase tracking-wider block font-black">Colors that Break your World (Strict Ban):</span>
+                            <p className="font-sans text-[12.5px] font-black text-black leading-relaxed">{generatedBlueprint.visualLanguage.colorsThatBreak}</p>
+                          </div>
+
+                          <div className="space-y-0.5">
+                            <span className="font-sans text-[9.5px] font-black text-rose-800 uppercase tracking-wider block font-black">Explicit Objects / Concepts that Do NOT Belong:</span>
+                            <p className="font-sans text-[12.5px] font-black text-black leading-relaxed">{generatedBlueprint.visualLanguage.notBelongVisual}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Visual/Signature Fallback Details */}
                 {fallbackData && (
                   <div className="flex flex-col gap-5 mt-4 pt-4 border-t border-[#caa28f]/30">
@@ -1065,7 +1426,9 @@ export function App() {
                         The Curated Mood & Palette
                       </span>
                       
-                      <div className="p-5 rounded-[22px] border border-[#caa28f]/40 bg-white/95 space-y-4 shadow-sm">
+                      <div className={`p-5 rounded-[22px] border bg-white/95 space-y-4 shadow-sm transition-all duration-350
+                        ${isFacelessCreator ? "border-[#4fa89a] shadow-[0_0_15px_rgba(79,168,154,0.35)]" : "border-[#caa28f]/40"}
+                      `}>
                         <p className="font-serif italic text-sm text-[#5c1f30] leading-relaxed">
                           "{fallbackData.moodSummary}"
                         </p>
@@ -1092,7 +1455,9 @@ export function App() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       
                       {/* TEXTURE PLACEMENT CARD */}
-                      <div className="p-4 rounded-[22px] border border-[#caa28f]/40 bg-white/95 space-y-2">
+                      <div className={`p-4 rounded-[22px] border bg-white/95 space-y-2 transition-all duration-350
+                        ${isFacelessCreator ? "border-[#4fa89a] shadow-[0_0_15px_rgba(79,168,154,0.35)]" : "border-[#caa28f]/40"}
+                      `}>
                         <span className="font-sans text-[9px] font-extrabold tracking-[0.2em] text-black/60 uppercase block">
                           Texture & Material Direction
                         </span>
@@ -1107,7 +1472,9 @@ export function App() {
                       </div>
 
                       {/* COMPOSITION CARD */}
-                      <div className="p-4 rounded-[22px] border border-[#caa28f]/40 bg-white/95 space-y-2">
+                      <div className={`p-4 rounded-[22px] border bg-white/95 space-y-2 transition-all duration-350
+                        ${isFacelessCreator ? "border-[#4fa89a] shadow-[0_0_15px_rgba(79,168,154,0.35)]" : "border-[#caa28f]/40"}
+                      `}>
                         <span className="font-sans text-[9px] font-extrabold tracking-[0.2em] text-black/60 uppercase block">
                           Composition & Framing
                         </span>
@@ -1119,7 +1486,9 @@ export function App() {
                     </div>
 
                     {/* execution DO / DO NOTS */}
-                    <div className="p-5 rounded-[22px] border border-[#caa28f]/40 bg-[#fffdfc] space-y-3">
+                    <div className={`p-5 rounded-[22px] border bg-[#fffdfc] space-y-3 transition-all duration-350
+                      ${isFacelessCreator ? "border-[#4fa89a] shadow-[0_0_15px_rgba(79,168,154,0.35)]" : "border-[#caa28f]/40"}
+                    `}>
                       <span className="font-sans text-[9px] font-extrabold tracking-[0.2em] text-black/60 uppercase block">
                         Execution Guide
                       </span>

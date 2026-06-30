@@ -221,7 +221,9 @@ Output ONLY a JSON object with the strict fields matching the schema. Do not mak
 
       // Instructions specifically targeting either Visual Direction or Signature Mark
       let prompt = `You are a visual psychologist, creative curator, and design strategist for the "${mode === 'visual' ? 'Visual Direction Generator' : 'Signature Mark Generator'}".
-Your task is to analyze the user's questionnaire choices, visual descriptors, and optional moodboard images to formulate EXACTLY 12 distinct, short (2 to 5 words), highly vivid, and beautiful Pinterest search phrases.
+Your task is to analyze the user's questionnaire choices, visual descriptors, and optional moodboard images to formulate:
+1. EXACTLY 12 distinct, short (2 to 5 words), highly vivid, and beautiful Pinterest search phrases.
+2. A detailed Curation Blueprint structured strictly according to the Phase 2 & Phase 3 curation framework.
 
 Mode: ${mode === 'visual' ? 'Visual Direction' : 'Signature Mark'}
 
@@ -234,17 +236,33 @@ ${refImages && refImages.length > 0 ? `\nNote: The user also provided ${refImage
 --- Guidelines for Phrases ---
 - You MUST output EXACTLY 12 phrases.
 - Each phrase must be between 2 and 5 words only.
-- Output phrases must be tailored directly to the selections to describe a highly curated, ultra-cohesive style.
-- Make them evocate, aesthetic, and designed for Pinterest search. Avoid repetitive words.
+- Output phrases must be tailored directly to describe a highly curated, ultra-cohesive style.
+- Make them evocative, aesthetic, and designed for Pinterest search. Avoid repetitive words.
 ${mode === 'visual' ? `
 - For Visual Direction: The phrases MUST focus on photography styles, composition, lighting, textures, natural settings, or interior architecture. Avoid graphic designs, cliparts, or logos. (Examples: "dappled light raw plaster", "minimalist stone alcove study", "nostalgic coastal afternoon blur").
 ` : `
 - For Signature Mark: The phrases MUST focus on graphic elements, custom illustrations, stamps, vector icons, continuous line art, wax seals, png stickers, or textured brand emblems. Useful search keywords include PNG, vector, monogram, motif, logo, wax seal, sticker overlay, illustration. (Examples: "minimal golden moth crest png", "linocut custom sun stamp", "vintage ink eye icon pack").
 `}
 
-- CRITICAL: Return ONLY a raw JSON array of 12 strings. No markdown backticks, no wrap, no explanations. Just the JSON array itself!
-Example output:
-["phrase one", "phrase two", "phrase three", "phrase four", "phrase five", "phrase six", "phrase seven", "phrase eight", "phrase nine", "phrase ten", "phrase eleven", "phrase twelve"]`;
+--- Guidelines for Curation Blueprint ---
+Formulate a concrete, authoritative Curation Blueprint based strictly on these rules:
+1. **World Direction:** You MUST choose EXACTLY ONE main direction from: "controlled", "surreal", "grounded", "nostalgic", "minimal". Never mix them. State what this direction means and controls.
+2. **World Rules:** Define what exists in this world, what repeats, what does NOT belong, and what breaks the world/shatters the visual illusion.
+3. **Environment:** Types of spaces your world uses, and emotional tone (calm, controlled, chaotic, or nostalgic) and what each feels like. Note: World ≠ environment/background; world means what recurs. A completely realistic world is still a valid world.
+4. **Visual Language:** Formulate details on:
+   - Color behavior: (soft, muted, bold, warm, cool, pastel, dark).
+   - Tone: visual emotional feeling.
+   - Energy: (still, active, tense, flowing, sharp).
+   - Styling direction: clothing/material styling (applicable if character elements are in space).
+   - Lighting behavior: light sources.
+   - Color combinations that repeat.
+   - Environment type: consistent settings.
+   - Composition: framing patterns, camera angles, or crops.
+   - Emotional feel across visuals.
+   - Colors that break your world (colors that must never enter).
+   - What does NOT belong in your visual world (explicit objects or concepts to exclude).
+
+CRITICAL: Return ONLY a raw JSON object matching the requested schema. No markdown backticks, no wrap, no explanations.`;
 
       const contents: any[] = [];
 
@@ -274,16 +292,68 @@ Example output:
         config: {
           responseMimeType: "application/json",
           responseSchema: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.STRING,
+            type: Type.OBJECT,
+            properties: {
+              phrases: {
+                type: Type.ARRAY,
+                items: { type: Type.STRING },
+                description: "An array of exactly 12 Pinterest search phrase strings."
+              },
+              blueprint: {
+                type: Type.OBJECT,
+                properties: {
+                  worldDirection: {
+                    type: Type.OBJECT,
+                    properties: {
+                      type: { type: Type.STRING, description: "Exactly one of: controlled, surreal, grounded, nostalgic, minimal" },
+                      meaning: { type: Type.STRING, description: "What this direction means and controls in their visual universe" },
+                      exists: { type: Type.STRING, description: "What exists in this world" },
+                      doesNotBelong: { type: Type.STRING, description: "What does not belong in this world" },
+                      repeats: { type: Type.STRING, description: "What repeats / recurring motifs" },
+                      breaks: { type: Type.STRING, description: "What breaks the world and shatters the illusion" }
+                    },
+                    required: ["type", "meaning", "exists", "doesNotBelong", "repeats", "breaks"]
+                  },
+                  environment: {
+                    type: Type.OBJECT,
+                    properties: {
+                      spaces: { type: Type.STRING, description: "Types of spaces this world uses" },
+                      emotionalTone: { type: Type.STRING, description: "The emotional tone (calm, controlled, chaotic, nostalgic) and what it feels like" },
+                      worldVsBackground: { type: Type.STRING, description: "Clarification on how the recurring world differs from a static background" }
+                    },
+                    required: ["spaces", "emotionalTone", "worldVsBackground"]
+                  },
+                  visualLanguage: {
+                    type: Type.OBJECT,
+                    properties: {
+                      colorBehavior: { type: Type.STRING, description: "Color behavior (soft, muted, bold, warm, cool, pastel, dark)" },
+                      tone: { type: Type.STRING, description: "Visual emotional feeling" },
+                      energy: { type: Type.STRING, description: "Vibe energy (still, active, tense, flowing, sharp)" },
+                      styling: { type: Type.STRING, description: "Styling direction (clothing, materials, details)" },
+                      lighting: { type: Type.STRING, description: "Lighting behavior and sources" },
+                      repeatingColors: { type: Type.STRING, description: "Specific color combinations that repeat" },
+                      environmentType: { type: Type.STRING, description: "Consistent settings or horizons" },
+                      composition: { type: Type.STRING, description: "Framing patterns and camera angles" },
+                      emotionalFeel: { type: Type.STRING, description: "Emotional feel across visuals" },
+                      colorsThatBreak: { type: Type.STRING, description: "What specific colors break this world (must be avoided)" },
+                      notBelongVisual: { type: Type.STRING, description: "What does NOT belong in this visual world" }
+                    },
+                    required: [
+                      "colorBehavior", "tone", "energy", "styling", "lighting", 
+                      "repeatingColors", "environmentType", "composition", 
+                      "emotionalFeel", "colorsThatBreak", "notBelongVisual"
+                    ]
+                  }
+                },
+                required: ["worldDirection", "environment", "visualLanguage"]
+              }
             },
-            description: "An array of exactly 12 Pinterest search phrase strings.",
+            required: ["phrases", "blueprint"]
           }
         }
       });
 
-      let text = response.text ? response.text.trim() : "[]";
+      let text = response.text ? response.text.trim() : "{}";
       
       // Clean markdown wrappers if any
       if (text.startsWith("```json")) {

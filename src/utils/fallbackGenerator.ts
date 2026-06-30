@@ -13,6 +13,34 @@ export interface FallbackData {
   emojis?: string[];
   explanation?: string;
   moodLine?: string;
+  blueprint?: {
+    worldDirection: {
+      type: string;
+      meaning: string;
+      exists: string;
+      doesNotBelong: string;
+      repeats: string;
+      breaks: string;
+    };
+    environment: {
+      spaces: string;
+      emotionalTone: string;
+      worldVsBackground: string;
+    };
+    visualLanguage: {
+      colorBehavior: string;
+      tone: string;
+      energy: string;
+      styling: string;
+      lighting: string;
+      repeatingColors: string;
+      environmentType: string;
+      composition: string;
+      emotionalFeel: string;
+      colorsThatBreak: string;
+      notBelongVisual: string;
+    };
+  };
 }
 
 export function generateFallbackResult(
@@ -268,6 +296,64 @@ export function generateFallbackResult(
     explanation = "The quiet hum of ephemeral dust. Present but fading into mist, leaving only a lingering sensory mark.";
   }
 
+  // 8. CONSTRUCT FALLBACK CURATION BLUEPRINT FOR PORTFOLIO DISPLAY
+  let dirType = "grounded";
+  let dirMeaning = "A world that feels solid, real, textured, and deeply tangible. Controls: natural elements, organic textures (wood, stone, coarse fabric), physical weight, raw materials.";
+  let dirExists = "Pristine physical artifacts, rough wooden boards, worn iron keys, linen cloth, natural cast shadows.";
+  let dirNotBelong = "Digital interfaces, clean geometric lines, highly polished plastics, vector drawings, bright light leaks.";
+  const feelLower = feelStr;
+  
+  if (feelLower.includes("calm") || feelLower.includes("still")) {
+    dirType = "minimal";
+    dirMeaning = "A world stripped of excess, focusing purely on empty space, structure, and singular elements. Controls: high negative space, clean lines, singular subjects, high focus, silence.";
+    dirExists = "Singular central object, vast empty cream backgrounds, quiet direct sunlight, soft cast shadow.";
+    dirNotBelong = "Complex collages, multiple conflicting textures, heavy dark gradients, decorative borders.";
+  } else if (feelLower.includes("controlled") || feelLower.includes("intentional")) {
+    dirType = "controlled";
+    dirMeaning = "A world where everything is strictly composed, deliberate, and geometrically aligned. Controls: symmetry, order, pristine placement, zero random elements.";
+    dirExists = "Symmetrical placements, centered items, micro-focused macro lenses, clean metal bezels, matching color roles.";
+    dirNotBelong = "Draped random folds, messy spills, tilted text, hand-drawn scribbles, uneven lighting.";
+  } else if (feelLower.includes("surreal") || feelLower.includes("off")) {
+    dirType = "surreal";
+    dirMeaning = "A world where reality is altered, magical, dreamlike, or slightly distorted. Controls: impossible physics, uncanny light source, symbolic objects in unusual contexts, dream states.";
+    dirExists = "Prism light refractions, floating dust particles, mirrors showing impossible angles, double-exposure shadows.";
+    dirNotBelong = "Stark real-world stock environments, flat clinical lighting, boring everyday kitchen setups.";
+  } else if (feelLower.includes("nostalgic") || feelLower.includes("memory") || feelLower.includes("romantic")) {
+    dirType = "nostalgic";
+    dirMeaning = "A world that feels like a specific memory, decades past, or faded warmth. Controls: grain, sepia tones, light leaks, soft focus, retro objects, vintage warmth.";
+    dirExists = "Dust motes in light beams, faded satin, aged brass filigree, tea-stained book edges, warm candle glow.";
+    dirNotBelong = "Fluorescent light tubes, smartphone frames, clean modern steel, crisp digital resolution.";
+  }
+
+  const blueprint = {
+    worldDirection: {
+      type: dirType,
+      meaning: dirMeaning,
+      exists: dirExists,
+      doesNotBelong: dirNotBelong,
+      repeats: "The repetition of a single key material (wax, metal, or raw fibers) with continuous geometry.",
+      breaks: "Using bright plastic surfaces, modern digital devices, or pure high-frequency neon lights."
+    },
+    environment: {
+      spaces: spaceStr.length > 0 ? `Spaces of type: ${spaceStr}` : "Intimate architectural alcoves, warm sunlit libraries, and quiet stone surfaces.",
+      emotionalTone: feelLower.length > 0 ? `A feeling of ${feelLower}` : "Quiet, nostalgic sanctuary where everything is held in soft tension.",
+      worldVsBackground: "World means the entire system of recurring objects and rules, not just a simple environment background image."
+    },
+    visualLanguage: {
+      colorBehavior: colorStr.length > 0 ? `Color behavior is ${colorStr}` : "Restrained. Soft muted tones washed with warm candlelight or light grey.",
+      tone: "Quietly emotional, deeply personal, and classical.",
+      energy: energyStr.length > 0 ? `Energy moves as ${energyStr}` : "Unhurried, slow-paced stillness with delicate micro-vibrations.",
+      styling: "Heirloom jewelry, fine natural textiles, soft leather, and gold engravings.",
+      lighting: "Golden Hour diffusing or warm flickering candlelight casting long, soft-edged shadows.",
+      repeatingColors: "Soft blush pink (#F4CCD8) paired with heavy base charcoal or antique brass gold.",
+      environmentType: "Quiet interior vanity table, rustic desk, or museum alcove with stable horizons.",
+      composition: composition,
+      emotionalFeel: "The unified soul of an archival sanctuary that makes everything look like a saved treasure.",
+      colorsThatBreak: "Artificial high-saturation neons, corporate neon cyan, and sterile plastic whites.",
+      notBelongVisual: "Low-resolution memes, cartoon cliparts, stock vector templates, and modern screens."
+    }
+  };
+
   return {
     phrases,
     isFallback: true,
@@ -278,6 +364,7 @@ export function generateFallbackResult(
     dos,
     doNots,
     emojis,
-    explanation
+    explanation,
+    blueprint
   };
 }
