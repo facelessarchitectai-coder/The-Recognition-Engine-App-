@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { 
   VISUAL_DIRECTION_QUESTIONS, 
   SIGNATURE_MARK_QUESTIONS, 
@@ -13,8 +13,26 @@ import {
 import GemsAndPearls from "./components/GemsAndPearls";
 import AnswerOption from "./components/AnswerOption";
 import UploadReferences, { RefImage } from "./components/UploadReferences";
-import { ArrowLeft, Check, AlertTriangle, RefreshCw, Sparkles, ExternalLink } from "lucide-react";
+import { ArrowLeft, Check, AlertTriangle, RefreshCw, Sparkles, ExternalLink, Bookmark } from "lucide-react";
 import { generateFallbackResult, FallbackData } from "./utils/fallbackGenerator";
+
+import { onAuthStateChanged, User } from "firebase/auth";
+import { 
+  auth, 
+  signInWithGoogle, 
+  signOutUser, 
+  testConnection, 
+  saveWorkspaceToFirestore, 
+  loadWorkspaceFromFirestore, 
+  saveCreationToFirestore, 
+  loadCreationsFromFirestore, 
+  deleteCreationFromFirestore, 
+  SavedCreationItem 
+} from "./firebase";
+import SignInScreen from "./components/SignInScreen";
+import UserAccountHeader, { SaveStatus } from "./components/UserAccountHeader";
+import SavedLibraryModal from "./components/SavedLibraryModal";
+import UnresolvedDraftBanner from "./components/UnresolvedDraftBanner";
 
 // Real-world high-fidelity generated jewelry photography assets
 import brilliantDiamondImg from "./assets/images/brilliant_diamond_1781750876333.jpg";
@@ -92,6 +110,312 @@ export function App() {
       notBelongVisual: string;
     };
   } | null>(null);
+
+  // Authentication & Persistence states
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isAuthChecking, setIsAuthChecking] = useState(true);
+  const [authError, setAuthError] = useState("");
+  const [isSigningIn, setIsSigningIn] = useState(false);
+
+  // Real-time Database Saving Status
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
+  const [saveErrorMessage, setSaveErrorMessage] = useState("");
+  const saveTimeoutRef = useRef<any>(null);
+  const isInitialLoadRef = useRef(true);
+
+  // Saved Creations Library
+  const [savedCreations, setSavedCreations] = useState<SavedCreationItem[]>([]);
+  const [isLibraryOpen, setIsLibraryOpen] = useState(false);
+  const [isSavingCreation, setIsSavingCreation] = useState(false);
+  const [creationSavedNotice, setCreationSavedNotice] = useState(false);
+  const [deletingCreationId, setDeletingCreationId] = useState<string | null>(null);
+
+  // Unresolved draft detection
+  const [hasUnresolvedDraft, setHasUnresolvedDraft] = useState(false);
+
+  // Test Firestore connection on boot
+  useEffect(() => {
+    testConnection();
+  }, []);
+
+  // Listen for Google Auth state changes
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        setCurrentUser(user);
+        setAuthError("");
+        try {
+          // Restore user's private workspace from database
+          const workspace = await loadWorkspaceFromFirestore(user.uid);
+          if (workspace) {
+            setActiveMode(workspace.activeMode || "visual");
+            setScreen(workspace.screen || "home");
+            setRefText(workspace.refText || "");
+            setIsFacelessCreator(Boolean(workspace.isFacelessCreator));
+            setShowAdvisory(workspace.showAdvisory !== undefined ? workspace.showAdvisory : true);
+            setCurrentStepIndex(workspace.currentStepIndex || 0);
+            setGeneratedPhrases(workspace.generatedPhrases || []);
+            setGeneratedFingerprint(workspace.generatedFingerprint || null);
+            setGeneratedColorWorld(workspace.generatedColorWorld || null);
+            setGeneratedBlueprint(workspace.generatedBlueprint || null);
+          }
+          // Load creations library
+          const creations = await loadCreationsFromFirestore(user.uid);
+          setSavedCreations(creations);
+
+          // Check if there was an unassigned guest draft in browser
+          const legacyDraft = localStorage.getItem("vdg_unassigned_guest_draft");
+          if (legacyDraft) {
+            setHasUnresolvedDraft(true);
+          }
+          setSaveStatus("saved");
+        } catch (err: any) {
+          console.error("Failed to restore workspace from database:", err);
+          setSaveStatus("error");
+          setSaveErrorMessage("Failed to restore cloud workspace.");
+        } finally {
+          setIsAuthChecking(false);
+          setTimeout(() => {
+            isInitialLoadRef.current = false;
+          }, 600);
+        }
+      } else {
+        // Safe clear on sign-out / unauthenticated
+        setCurrentUser(null);
+        setIsAuthChecking(false);
+        isInitialLoadRef.current = true;
+        if (saveTimeoutRef.current) {
+          clearTimeout(saveTimeoutRef.current);
+          saveTimeoutRef.current = null;
+        }
+        setSelections({});
+        setRefImages([]);
+        setRefText("");
+        setCurrentStepIndex(0);
+        setGeneratedPhrases([]);
+        setGeneratedFingerprint(null);
+        setGeneratedColorWorld(null);
+        setGeneratedBlueprint(null);
+        setFallbackData(null);
+        setSavedCreations([]);
+        setSaveStatus("idle");
+        setScreen("home");
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // Debounced auto-save active workspace changes to Firestore
+  useEffect(() => {
+    if (isInitialLoadRef.current || !currentUser) {
+      return;
+    }
+
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    setSaveStatus("saving");
+
+    saveTimeoutRef.current = setTimeout(async () => {
+      try {
+        await saveWorkspaceToFirestore(currentUser.uid, {
+          activeMode,
+          screen,
+          refText,
+          isFacelessCreator,
+          showAdvisory,
+          currentStepIndex,
+          generatedPhrases,
+          generatedFingerprint,
+          generatedColorWorld,
+          generatedBlueprint,
+        });
+        setSaveStatus("saved");
+        setSaveErrorMessage("");
+      } catch (err: any) {
+        console.error("Auto-save failed:", err);
+        setSaveStatus("error");
+        setSaveErrorMessage(err.message || "Failed to save changes.");
+      }
+    }, 1200);
+
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [
+    currentUser,
+    activeMode,
+    screen,
+    refText,
+    isFacelessCreator,
+    showAdvisory,
+    currentStepIndex,
+    generatedPhrases,
+    generatedFingerprint,
+    generatedColorWorld,
+    generatedBlueprint,
+  ]);
+
+  const handleRetrySave = async () => {
+    if (!currentUser) return;
+    setSaveStatus("saving");
+    try {
+      await saveWorkspaceToFirestore(currentUser.uid, {
+        activeMode,
+        screen,
+        refText,
+        isFacelessCreator,
+        showAdvisory,
+        currentStepIndex,
+        generatedPhrases,
+        generatedFingerprint,
+        generatedColorWorld,
+        generatedBlueprint,
+      });
+      setSaveStatus("saved");
+      setSaveErrorMessage("");
+    } catch (err: any) {
+      setSaveStatus("error");
+      setSaveErrorMessage(err.message || "Retry failed.");
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    setIsSigningIn(true);
+    setAuthError("");
+    try {
+      await signInWithGoogle();
+    } catch (err: any) {
+      console.error("Google sign in failed:", err);
+      if (err.code === "auth/popup-closed-by-user") {
+        setAuthError("Sign-in cancelled. Please continue with Google when ready.");
+      } else if (err.code === "auth/network-request-failed") {
+        setAuthError("Network request failed. Please check your connection.");
+      } else {
+        setAuthError(err.message || "Sign in failed. Please try again.");
+      }
+    } finally {
+      setIsSigningIn(false);
+    }
+  };
+
+  const handleSignOut = async () => {
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = null;
+    }
+    // Clear screen and caches immediately so data cannot appear in another account
+    setSelections({});
+    setRefImages([]);
+    setRefText("");
+    setCurrentStepIndex(0);
+    setGeneratedPhrases([]);
+    setGeneratedFingerprint(null);
+    setGeneratedColorWorld(null);
+    setGeneratedBlueprint(null);
+    setFallbackData(null);
+    setSavedCreations([]);
+    setSaveStatus("idle");
+    setScreen("home");
+    await signOutUser();
+  };
+
+  const handleSaveToLibrary = async () => {
+    if (!currentUser || isSavingCreation) return;
+    setIsSavingCreation(true);
+    try {
+      const title = refText.trim() 
+        ? refText.trim().slice(0, 50) + (refText.length > 50 ? "..." : "")
+        : `${activeMode.toUpperCase()} Creation`;
+
+      const id = await saveCreationToFirestore(currentUser.uid, {
+        mode: activeMode,
+        title,
+        refText,
+        isFacelessCreator,
+        generatedPhrases,
+        generatedFingerprint,
+        generatedColorWorld,
+        generatedBlueprint,
+      });
+
+      setSavedCreations((prev) => [
+        {
+          id,
+          ownerId: currentUser.uid,
+          mode: activeMode,
+          title,
+          refText,
+          isFacelessCreator,
+          generatedPhrases,
+          generatedFingerprint,
+          generatedColorWorld,
+          generatedBlueprint,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+        ...prev,
+      ]);
+
+      setCreationSavedNotice(true);
+      setTimeout(() => setCreationSavedNotice(false), 2500);
+    } catch (err: any) {
+      console.error("Save to library failed:", err);
+    } finally {
+      setIsSavingCreation(false);
+    }
+  };
+
+  const handleLoadCreation = (item: SavedCreationItem) => {
+    setActiveMode(item.mode);
+    setRefText(item.refText || "");
+    setIsFacelessCreator(Boolean(item.isFacelessCreator));
+    setGeneratedPhrases(item.generatedPhrases || []);
+    setGeneratedFingerprint(item.generatedFingerprint || null);
+    setGeneratedColorWorld(item.generatedColorWorld || null);
+    setGeneratedBlueprint(item.generatedBlueprint || null);
+    setScreen("results");
+    setIsLibraryOpen(false);
+  };
+
+  const handleDeleteCreation = async (id: string) => {
+    if (!currentUser) return;
+    setDeletingCreationId(id);
+    try {
+      await deleteCreationFromFirestore(currentUser.uid, id);
+      setSavedCreations((prev) => prev.filter((c) => c.id !== id));
+    } catch (err) {
+      console.error("Failed to delete creation:", err);
+    } finally {
+      setDeletingCreationId(null);
+    }
+  };
+
+  const handleImportUnresolvedDraft = () => {
+    try {
+      const dataStr = localStorage.getItem("vdg_unassigned_guest_draft");
+      if (dataStr) {
+        const parsed = JSON.parse(dataStr);
+        if (parsed.refText) setRefText(parsed.refText);
+        if (parsed.activeMode) setActiveMode(parsed.activeMode);
+        if (parsed.isFacelessCreator !== undefined) setIsFacelessCreator(parsed.isFacelessCreator);
+      }
+    } catch (e) {
+      console.error("Error importing draft:", e);
+    } finally {
+      localStorage.removeItem("vdg_unassigned_guest_draft");
+      setHasUnresolvedDraft(false);
+    }
+  };
+
+  const handleDiscardUnresolvedDraft = () => {
+    localStorage.removeItem("vdg_unassigned_guest_draft");
+    setHasUnresolvedDraft(false);
+  };
 
   // Mode settings
   const modeAccentColor = activeMode === "visual"
@@ -350,18 +674,70 @@ export function App() {
     }, 1500);
   };
 
+  if (isAuthChecking) {
+    return (
+      <div
+        className="min-h-screen w-full relative flex flex-col justify-center items-center select-none overflow-hidden p-6"
+        style={{
+          background: "linear-gradient(135deg, #f0c2cd 0%, #dfa0ab 100%)",
+        }}
+      >
+        <GemsAndPearls screen="home" />
+        <div className="z-10 flex flex-col items-center text-center space-y-4 animate-fade-in">
+          <div className="w-14 h-14 rounded-full border-3 border-white/30 border-t-[#4fa89a] animate-spin shadow-[0_4px_20px_rgba(79,168,154,0.3)]" />
+          <h2 className="font-serif text-2xl text-white font-medium drop-shadow-md">
+            Restoring your workspace...
+          </h2>
+          <p className="font-serif italic text-white/80 text-sm">
+            Retrieving your saved identity selections and results
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!currentUser) {
+    return (
+      <SignInScreen
+        onSignIn={handleGoogleSignIn}
+        isLoading={isSigningIn}
+        errorMessage={authError}
+        onClearError={() => setAuthError("")}
+      />
+    );
+  }
+
   return (
     <div
-      className="min-h-screen w-full relative flex flex-col justify-start items-center transition-all duration-700 select-none overflow-x-hidden pb-12 pt-8 px-4"
+      className="min-h-screen w-full relative flex flex-col justify-start items-center transition-all duration-700 select-none overflow-x-hidden pb-12 pt-16 px-4"
       style={{
         background: "linear-gradient(135deg, #f0c2cd 0%, #dfa0ab 100%)",
       }}
     >
+      {/* Top User Account Header with Real-time Save Status & Sign Out */}
+      <UserAccountHeader
+        user={currentUser}
+        saveStatus={saveStatus}
+        saveErrorMessage={saveErrorMessage}
+        onRetrySave={handleRetrySave}
+        onSignOut={handleSignOut}
+        onOpenLibrary={() => setIsLibraryOpen(true)}
+        savedCount={savedCreations.length}
+      />
+
       {/* Decorative Fixed Gems & Pearls Background Elements */}
       <GemsAndPearls screen={screen} />
 
       {/* Main Container: Mobile-first container boundary */}
-      <main id="app-window-boundary" className="w-full max-w-[400px] z-10 flex flex-col gap-6 relative mt-16 sm:mt-24 px-6">
+      <main id="app-window-boundary" className="w-full max-w-[400px] z-10 flex flex-col gap-6 relative mt-10 sm:mt-12 px-6">
+        
+        {/* Unresolved legacy draft notice if detected in this browser */}
+        {hasUnresolvedDraft && (
+          <UnresolvedDraftBanner
+            onImport={handleImportUnresolvedDraft}
+            onDiscard={handleDiscardUnresolvedDraft}
+          />
+        )}
         
         {/* =======================================================
             STATE A: HOME SCREEN
@@ -935,8 +1311,32 @@ export function App() {
                   </div>
                 </div>
 
-                {/* Primary Action Button: Start Over */}
+                {/* Primary Action Button: Save to Library & Start Over */}
                 <div id="results-primary-nav" className="flex flex-col gap-3 mt-5 w-full">
+                  <button
+                    id="save-color-library-btn"
+                    onClick={handleSaveToLibrary}
+                    disabled={isSavingCreation}
+                    className="w-full py-3.5 px-4 rounded-[14px] bg-white/10 hover:bg-white/20 border border-white/30 text-white font-sans text-xs uppercase tracking-[0.16em] font-bold flex items-center justify-center gap-2 cursor-pointer transition-all shadow-md"
+                  >
+                    {creationSavedNotice ? (
+                      <>
+                        <Check className="w-4 h-4 text-[#4fa89a]" />
+                        <span className="text-[#4fa89a]">Saved to Your Library!</span>
+                      </>
+                    ) : isSavingCreation ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin text-white" />
+                        <span>Saving to Library...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Bookmark className="w-4 h-4 text-[#caa28f]" />
+                        <span>Save to Private Library</span>
+                      </>
+                    )}
+                  </button>
+
                   <button
                     id="reset-restart-btn"
                     onClick={handleStartOver}
@@ -1123,6 +1523,30 @@ export function App() {
                     }}
                   >
                     {copiedFingerprint ? "✓ Fingerprint Copied!" : "Copy Fingerprint"}
+                  </button>
+
+                  <button
+                    id="save-fingerprint-library-btn"
+                    onClick={handleSaveToLibrary}
+                    disabled={isSavingCreation}
+                    className="w-full py-3.5 px-4 rounded-[14px] bg-black/15 hover:bg-black/25 border border-black/20 text-black font-sans text-xs uppercase tracking-[0.16em] font-bold flex items-center justify-center gap-2 cursor-pointer transition-all shadow-sm"
+                  >
+                    {creationSavedNotice ? (
+                      <>
+                        <Check className="w-4 h-4 text-[#2b6d61]" />
+                        <span className="text-[#2b6d61]">Saved to Your Library!</span>
+                      </>
+                    ) : isSavingCreation ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin text-black" />
+                        <span>Saving to Library...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Bookmark className="w-4 h-4 text-[#8a3a5c]" />
+                        <span>Save to Private Library</span>
+                      </>
+                    )}
                   </button>
 
                   <button
@@ -1611,6 +2035,30 @@ export function App() {
                   </button>
 
                   <button
+                    id="save-direction-library-btn"
+                    onClick={handleSaveToLibrary}
+                    disabled={isSavingCreation}
+                    className="w-full py-3.5 px-4 rounded-[14px] bg-black/10 hover:bg-black/20 border border-black/20 text-black font-sans text-xs uppercase tracking-[0.16em] font-bold flex items-center justify-center gap-2 cursor-pointer transition-all shadow-sm"
+                  >
+                    {creationSavedNotice ? (
+                      <>
+                        <Check className="w-4 h-4 text-[#2b6d61]" />
+                        <span className="text-[#2b6d61]">Saved to Your Library!</span>
+                      </>
+                    ) : isSavingCreation ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin text-black" />
+                        <span>Saving to Library...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Bookmark className="w-4 h-4 text-[#8a3a5c]" />
+                        <span>Save to Private Library</span>
+                      </>
+                    )}
+                  </button>
+
+                  <button
                     id="reset-restart-btn"
                     onClick={handleStartOver}
                     className="w-full py-3.5 rounded-[14px] font-sans text-xs tracking-[0.18em] border border-black/30 bg-transparent text-black transition-all cursor-pointer text-center hover:border-black/60 hover:bg-black/5 uppercase select-none font-semibold"
@@ -1661,6 +2109,16 @@ export function App() {
           </div>
         )}
       </main>
+
+      {/* Saved Creations Library Modal */}
+      <SavedLibraryModal
+        isOpen={isLibraryOpen}
+        onClose={() => setIsLibraryOpen(false)}
+        creations={savedCreations}
+        onLoadCreation={handleLoadCreation}
+        onDeleteCreation={handleDeleteCreation}
+        isDeletingId={deletingCreationId}
+      />
     </div>
   );
 }

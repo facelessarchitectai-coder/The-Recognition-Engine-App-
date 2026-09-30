@@ -368,17 +368,25 @@ CRITICAL: Return ONLY a raw JSON object matching the requested schema. No markdo
       text = text.trim();
 
       const parsed = JSON.parse(text);
-      if (!Array.isArray(parsed) || parsed.length === 0) {
+      let phrases: string[] = [];
+      let blueprint: any = null;
+
+      if (Array.isArray(parsed)) {
+        phrases = parsed;
+      } else if (parsed && Array.isArray(parsed.phrases)) {
+        phrases = parsed.phrases;
+        blueprint = parsed.blueprint || null;
+      } else {
         throw new Error("Gemini did not return a valid array of terms.");
       }
 
       // Ensure exactly 12 items
-      let phrases = parsed.slice(0, 12);
+      phrases = phrases.slice(0, 12);
       while (phrases.length < 12) {
         phrases.push(`vivid ${mode === 'visual' ? 'atmospheric details' : 'graphic emblem design'}`);
       }
 
-      res.json({ success: true, phrases });
+      res.json({ success: true, phrases, blueprint });
     } catch (err: any) {
       console.error("API ultimate failure inside /api/generate:", err);
       // Return a professional, clean user-friendly error instead of raw stacktrace or JSON

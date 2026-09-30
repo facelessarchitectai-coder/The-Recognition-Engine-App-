@@ -1,0 +1,93 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Validation for UserProfile
+    function isValidUserProfile(data, userId) {
+      return data.id == userId
+        && data.id == request.auth.uid
+        && data.email is string
+        && data.email.size() > 0
+        && data.email.size() <= 320;
+    }
+
+    // Validation for UserWorkspace
+    function isValidUserWorkspace(data, userId) {
+      return data.ownerId == userId
+        && data.ownerId == request.auth.uid
+        && data.activeMode in ['visual', 'signature', 'fingerprints', 'color']
+        && data.screen in ['home', 'quiz', 'results']
+        && (!('refText' in data) || (data.refText is string && data.refText.size() <= 20000));
+    }
+
+    // Validation for SavedCreation
+    function isValidSavedCreation(data, userId) {
+      return data.ownerId == userId
+        && data.ownerId == request.auth.uid
+        && data.mode in ['visual', 'signature', 'fingerprints', 'color']
+        && data.title is string
+        && data.title.size() > 0
+        && data.title.size() <= 300
+        && (!('refText' in data) || (data.refText is string && data.refText.size() <= 20000));
+    }
+
+    // System connectivity check target document
+    match /test/connection {
+      allow read: if true;
+    }
+
+    // User profile document
+    match /users/{userId} {
+      allow get: if isOwner(userId) && isValidId(userId);
+      allow list: if false;
+      allow create: if isOwner(userId) && isValidId(userId) && isValidUserProfile(incoming(), userId);
+      allow update: if isOwner(userId) && isValidId(userId) && isValidUserProfile(incoming(), userId) && incoming().id == existing().id;
+      allow delete: if isOwner(userId) && isValidId(userId);
+
+      // User's private workspaces
+      match /workspaces/{workspaceId} {
+        allow get: if isOwner(userId) && isValidId(userId) && isValidId(workspaceId);
+        allow list: if isOwner(userId) && isValidId(userId);
+        allow create: if isOwner(userId) && isValidId(userId) && isValidId(workspaceId) && isValidUserWorkspace(incoming(), userId);
+        allow update: if isOwner(userId) && isValidId(userId) && isValidId(workspaceId) && isValidUserWorkspace(incoming(), userId) && incoming().ownerId == existing().ownerId;
+        allow delete: if isOwner(userId) && isValidId(userId) && isValidId(workspaceId);
+      }
+
+      // User's saved creations & results history
+      match /creations/{creationId} {
+        allow get: if isOwner(userId) && isValidId(userId) && isValidId(creationId);
+        allow list: if isOwner(userId) && isValidId(userId);
+        allow create: if isOwner(userId) && isValidId(userId) && isValidId(creationId) && isValidSavedCreation(incoming(), userId);
+        allow update: if isOwner(userId) && isValidId(userId) && isValidId(creationId) && isValidSavedCreation(incoming(), userId) && incoming().ownerId == existing().ownerId;
+        allow delete: if isOwner(userId) && isValidId(userId) && isValidId(creationId);
+      }
+    }
+  }
+}

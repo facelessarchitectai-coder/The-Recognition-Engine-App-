@@ -1,0 +1,176 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile information representing an authenticated person.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique Google user ID"
+        },
+        "email": {
+          "type": "string",
+          "description": "User Google email address"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "User display name if available"
+        },
+        "photoURL": {
+          "type": "string",
+          "description": "User avatar photo URL if available"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when profile was created"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when profile was last updated"
+        }
+      },
+      "required": ["id", "email", "createdAt", "updatedAt"]
+    },
+    "UserWorkspace": {
+      "title": "UserWorkspace",
+      "description": "Active in-progress workspace state containing current mode, prompt inputs, and results.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Workspace ID identifier"
+        },
+        "ownerId": {
+          "type": "string",
+          "description": "The UID of the verified user owning this workspace"
+        },
+        "activeMode": {
+          "type": "string",
+          "description": "Active generation engine mode",
+          "enum": ["visual", "signature", "fingerprints", "color"]
+        },
+        "screen": {
+          "type": "string",
+          "description": "Current interface screen state",
+          "enum": ["home", "quiz", "results"]
+        },
+        "refText": {
+          "type": "string",
+          "description": "Input description and reference text",
+          "maxLength": 10000
+        },
+        "isFacelessCreator": {
+          "type": "boolean",
+          "description": "Whether the faceless creator toggle is active"
+        },
+        "showAdvisory": {
+          "type": "boolean",
+          "description": "Whether the identity prerequisite advisory note is visible"
+        },
+        "currentStepIndex": {
+          "type": "number",
+          "description": "Active question or step index"
+        },
+        "generatedPhrases": {
+          "type": "array",
+          "description": "Curated Pinterest search phrases generated for visual or signature mark"
+        },
+        "generatedFingerprint": {
+          "type": "object",
+          "description": "Generated emoji fingerprint payload if applicable"
+        },
+        "generatedColorWorld": {
+          "type": "object",
+          "description": "Generated color palette and mood line if applicable"
+        },
+        "generatedBlueprint": {
+          "type": "object",
+          "description": "Generated curation blueprint if applicable"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Last saved timestamp"
+        }
+      },
+      "required": ["id", "ownerId", "activeMode", "screen", "updatedAt"]
+    },
+    "SavedCreation": {
+      "title": "SavedCreation",
+      "description": "A saved generation result archived in the user's private library.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique creation record ID"
+        },
+        "ownerId": {
+          "type": "string",
+          "description": "The UID of the verified user who owns this result"
+        },
+        "mode": {
+          "type": "string",
+          "description": "Mode under which result was produced",
+          "enum": ["visual", "signature", "fingerprints", "color"]
+        },
+        "title": {
+          "type": "string",
+          "description": "Title or descriptive label for the saved item",
+          "maxLength": 200
+        },
+        "refText": {
+          "type": "string",
+          "description": "Source text or prompt used",
+          "maxLength": 10000
+        },
+        "isFacelessCreator": {
+          "type": "boolean",
+          "description": "Whether faceless creator mode was active"
+        },
+        "generatedPhrases": {
+          "type": "array",
+          "description": "Generated search phrases"
+        },
+        "generatedFingerprint": {
+          "type": "object",
+          "description": "Emoji fingerprint result if mode was fingerprints"
+        },
+        "generatedColorWorld": {
+          "type": "object",
+          "description": "Color world palette result if mode was color"
+        },
+        "generatedBlueprint": {
+          "type": "object",
+          "description": "Curation blueprint result if mode was visual or signature"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Update timestamp"
+        }
+      },
+      "required": ["id", "ownerId", "mode", "title", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Stores private user account information accessible only by the owner."
+    },
+    "/users/{userId}/workspaces/{workspaceId}": {
+      "schema": "UserWorkspace",
+      "description": "Stores user active workspace progress and state, strictly isolated to the owner."
+    },
+    "/users/{userId}/creations/{creationId}": {
+      "schema": "SavedCreation",
+      "description": "Stores user's permanently archived results and generations, accessible only by owner."
+    }
+  }
+}
