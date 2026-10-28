@@ -30,6 +30,7 @@ import {
   SavedCreationItem 
 } from "./firebase";
 import SignInScreen from "./components/SignInScreen";
+import { geminiKeyHeaders } from "./services/geminiKey";
 import UserAccountHeader, { SaveStatus } from "./components/UserAccountHeader";
 import SavedLibraryModal from "./components/SavedLibraryModal";
 import UnresolvedDraftBanner from "./components/UnresolvedDraftBanner";
@@ -543,6 +544,7 @@ export function App() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          ...geminiKeyHeaders(),
         },
         body: JSON.stringify({
           mode: activeMode,
