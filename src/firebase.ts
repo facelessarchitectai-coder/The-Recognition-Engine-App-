@@ -1,5 +1,10 @@
 import { initializeApp } from "firebase/app";
 import { 
+  initializeAppCheck, 
+  ReCaptchaEnterpriseProvider, 
+  AppCheck 
+} from "firebase/app-check";
+import { 
   getAuth, 
   GoogleAuthProvider, 
   signInWithPopup, 
@@ -24,6 +29,23 @@ import firebaseConfig from "../firebase-applet-config.json";
 
 // Initialize Firebase App
 export const app = initializeApp(firebaseConfig);
+
+// CRITICAL: Initialize App Check once before Firebase Authentication or Firestore requests
+// using ReCaptchaEnterpriseProvider and isTokenAutoRefreshEnabled: true
+export const RECAPTCHA_ENTERPRISE_SITE_KEY = firebaseConfig.recaptchaSiteKey || "6LdbxxAuAAAAANT42qF9TqaGec6Qya8CeBW-SOh6";
+
+let appCheckInstance: AppCheck | undefined;
+if (typeof window !== "undefined") {
+  try {
+    appCheckInstance = initializeAppCheck(app, {
+      provider: new ReCaptchaEnterpriseProvider(RECAPTCHA_ENTERPRISE_SITE_KEY),
+      isTokenAutoRefreshEnabled: true,
+    });
+  } catch (error) {
+    console.warn("Firebase App Check initialization notice:", error);
+  }
+}
+export const appCheck = appCheckInstance;
 
 // CRITICAL: The app will break without specifying the firestoreDatabaseId
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);

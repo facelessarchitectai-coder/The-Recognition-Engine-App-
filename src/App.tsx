@@ -30,7 +30,7 @@ import {
   SavedCreationItem 
 } from "./firebase";
 import SignInScreen from "./components/SignInScreen";
-import { geminiKeyHeaders } from "./services/geminiKey";
+import GeminiKeyScreen from "./components/GeminiKeyScreen";
 import UserAccountHeader, { SaveStatus } from "./components/UserAccountHeader";
 import SavedLibraryModal from "./components/SavedLibraryModal";
 import UnresolvedDraftBanner from "./components/UnresolvedDraftBanner";
@@ -118,6 +118,12 @@ export function App() {
   const [authError, setAuthError] = useState("");
   const [isSigningIn, setIsSigningIn] = useState(false);
 
+  // Customer-supplied Gemini API key states
+  const [geminiKey, setGeminiKey] = useState<string>("");
+  const [isKeyValidated, setIsKeyValidated] = useState(false);
+  const [isCheckingKey, setIsCheckingKey] = useState(false);
+  const [keyValidationError, setKeyValidationError] = useState("");
+
   // Real-time Database Saving Status
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [saveErrorMessage, setSaveErrorMessage] = useState("");
@@ -170,6 +176,44 @@ export function App() {
             setHasUnresolvedDraft(true);
           }
           setSaveStatus("saved");
+
+          // Check for remembered session key for this customer and validate live
+          const sessionKey = sessionStorage.getItem(`gemini_key_${user.uid}`);
+          if (sessionKey) {
+            setIsCheckingKey(true);
+            try {
+              const idToken = await user.getIdToken();
+              const valRes = await fetch("/api/validate-key", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${idToken}`,
+                  "x-gemini-api-key": sessionKey,
+                },
+                body: JSON.stringify({ geminiKey: sessionKey }),
+              });
+              const valData = await valRes.json().catch(() => null);
+              if (valRes.ok && valData?.success) {
+                setGeminiKey(sessionKey);
+                setIsKeyValidated(true);
+                setKeyValidationError("");
+              } else {
+                sessionStorage.removeItem(`gemini_key_${user.uid}`);
+                setGeminiKey("");
+                setIsKeyValidated(false);
+                setKeyValidationError(valData?.error || "Your previously stored key could not be verified. Please enter a valid Gemini API key.");
+              }
+            } catch (kErr) {
+              sessionStorage.removeItem(`gemini_key_${user.uid}`);
+              setGeminiKey("");
+              setIsKeyValidated(false);
+            } finally {
+              setIsCheckingKey(false);
+            }
+          } else {
+            setGeminiKey("");
+            setIsKeyValidated(false);
+          }
         } catch (err: any) {
           console.error("Failed to restore workspace from database:", err);
           setSaveStatus("error");
@@ -184,6 +228,10 @@ export function App() {
         // Safe clear on sign-out / unauthenticated
         setCurrentUser(null);
         setIsAuthChecking(false);
+        setIsCheckingKey(false);
+        setGeminiKey("");
+        setIsKeyValidated(false);
+        setKeyValidationError("");
         isInitialLoadRef.current = true;
         if (saveTimeoutRef.current) {
           clearTimeout(saveTimeoutRef.current);
@@ -309,6 +357,13 @@ export function App() {
       clearTimeout(saveTimeoutRef.current);
       saveTimeoutRef.current = null;
     }
+    if (currentUser) {
+      sessionStorage.removeItem(`gemini_key_${currentUser.uid}`);
+    }
+    setGeminiKey("");
+    setIsKeyValidated(false);
+    setIsCheckingKey(false);
+    setKeyValidationError("");
     // Clear screen and caches immediately so data cannot appear in another account
     setSelections({});
     setRefImages([]);
@@ -323,6 +378,20 @@ export function App() {
     setSaveStatus("idle");
     setScreen("home");
     await signOutUser();
+  };
+
+  const handleKeyValidated = (key: string) => {
+    setGeminiKey(key);
+    setIsKeyValidated(true);
+    setKeyValidationError("");
+    if (currentUser) {
+      sessionStorage.setItem(`gemini_key_${currentUser.uid}`, key);
+    }
+  };
+
+  const handleChangeKey = () => {
+    setKeyValidationError("");
+    setIsKeyValidated(false);
   };
 
   const handleSaveToLibrary = async () => {
@@ -520,11 +589,23 @@ export function App() {
 
   // call local Node server API
   const generateResults = async () => {
+    if (!currentUser) {
+      return;
+    }
+
+    if (!geminiKey || !isKeyValidated) {
+      setIsKeyValidated(false);
+      setKeyValidationError("A valid customer Gemini API key is required to generate AI results.");
+      return;
+    }
+
     setIsLoading(true);
     setErrorMsg("");
     setFallbackErrorMessage("");
 
     try {
+      const idToken = await currentUser.getIdToken();
+
       // Compile answer objects from the open-ended typing to handle on backend
       const answersPayload = [
         {
@@ -544,7 +625,8 @@ export function App() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...geminiKeyHeaders(),
+          Authorization: `Bearer ${idToken}`,
+          "x-gemini-api-key": geminiKey,
         },
         body: JSON.stringify({
           mode: activeMode,
@@ -559,8 +641,18 @@ export function App() {
         }),
       });
 
-      const data = await response.json();
-      if (data.success) {
+      const data = await response.json().catch(() => null);
+
+      if (response.status === 401 || data?.keyInvalid) {
+        setIsKeyValidated(false);
+        setGeminiKey("");
+        sessionStorage.removeItem(`gemini_key_${currentUser.uid}`);
+        setKeyValidationError(data?.error || "Your Gemini API key was rejected as invalid or revoked. Please provide a valid Gemini key.");
+        setIsLoading(false);
+        return;
+      }
+
+      if (data && data.success) {
         setFallbackData(null);
         setFallbackErrorMessage("");
         if (activeMode === "fingerprints") {
@@ -584,8 +676,9 @@ export function App() {
           setScreen("results");
         }
       } else {
-        // High demand, model error or timeout, generate local fallback
-        setFallbackErrorMessage(data.error || "The AI service is currently busy. Please try again in a few moments.");
+        // High demand, model error or timeout
+        const errMessage = data?.error || "The AI service is currently busy. Please try again in a few moments.";
+        setFallbackErrorMessage(errMessage);
         const fallback = generateFallbackResult(activeMode, selections);
         setFallbackData(fallback);
         if (activeMode === "fingerprints") {
@@ -676,7 +769,7 @@ export function App() {
     }, 1500);
   };
 
-  if (isAuthChecking) {
+  if (isAuthChecking || isCheckingKey) {
     return (
       <div
         className="min-h-screen w-full relative flex flex-col justify-center items-center select-none overflow-hidden p-6"
@@ -688,16 +781,17 @@ export function App() {
         <div className="z-10 flex flex-col items-center text-center space-y-4 animate-fade-in">
           <div className="w-14 h-14 rounded-full border-3 border-white/30 border-t-[#4fa89a] animate-spin shadow-[0_4px_20px_rgba(79,168,154,0.3)]" />
           <h2 className="font-serif text-2xl text-white font-medium drop-shadow-md">
-            Restoring your workspace...
+            {isAuthChecking ? "Restoring your workspace..." : "Verifying your Gemini API key..."}
           </h2>
           <p className="font-serif italic text-white/80 text-sm">
-            Retrieving your saved identity selections and results
+            {isAuthChecking ? "Retrieving your saved identity selections and results" : "Performing secure server-side validation"}
           </p>
         </div>
       </div>
     );
   }
 
+  // FIRST MANDATORY REQUIREMENT: GOOGLE SIGN-IN
   if (!currentUser) {
     return (
       <SignInScreen
@@ -709,6 +803,19 @@ export function App() {
     );
   }
 
+  // SECOND MANDATORY REQUIREMENT: CUSTOMER-SUPPLIED VALIDATED GEMINI KEY
+  if (!isKeyValidated) {
+    return (
+      <GeminiKeyScreen
+        user={currentUser}
+        onKeyValidated={handleKeyValidated}
+        onSignOut={handleSignOut}
+        initialError={keyValidationError}
+      />
+    );
+  }
+
+  // UNLOCK MAIN APP ONLY AFTER BOTH REQUIREMENTS PASS
   return (
     <div
       className="min-h-screen w-full relative flex flex-col justify-start items-center transition-all duration-700 select-none overflow-x-hidden pb-12 pt-16 px-4"
@@ -716,7 +823,7 @@ export function App() {
         background: "linear-gradient(135deg, #f0c2cd 0%, #dfa0ab 100%)",
       }}
     >
-      {/* Top User Account Header with Real-time Save Status & Sign Out */}
+      {/* Top User Account Header with Real-time Save Status, Key Switch & Sign Out */}
       <UserAccountHeader
         user={currentUser}
         saveStatus={saveStatus}
@@ -725,6 +832,7 @@ export function App() {
         onSignOut={handleSignOut}
         onOpenLibrary={() => setIsLibraryOpen(true)}
         savedCount={savedCreations.length}
+        onChangeKey={handleChangeKey}
       />
 
       {/* Decorative Fixed Gems & Pearls Background Elements */}

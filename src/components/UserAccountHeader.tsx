@@ -1,6 +1,6 @@
 import React from "react";
 import { User } from "firebase/auth";
-import { Check, RefreshCw, AlertTriangle, LogOut, Bookmark, BookOpen, ShieldCheck } from "lucide-react";
+import { Check, RefreshCw, AlertTriangle, LogOut, Bookmark, BookOpen, ShieldCheck, KeyRound } from "lucide-react";
 
 export type SaveStatus = "idle" | "saving" | "saved" | "error";
 
@@ -12,6 +12,7 @@ interface UserAccountHeaderProps {
   onSignOut: () => void;
   onOpenLibrary: () => void;
   savedCount: number;
+  onChangeKey?: () => void;
 }
 
 export default function UserAccountHeader({
@@ -22,6 +23,7 @@ export default function UserAccountHeader({
   onSignOut,
   onOpenLibrary,
   savedCount,
+  onChangeKey,
 }: UserAccountHeaderProps) {
   return (
     <header className="fixed top-0 left-0 right-0 z-40 px-3 py-2 bg-black/60 backdrop-blur-[12px] border-b border-white/10 shadow-md">
@@ -94,6 +96,18 @@ export default function UserAccountHeader({
 
         {/* Right: Library & Sign-Out Controls */}
         <div className="flex items-center gap-2">
+          {onChangeKey && (
+            <button
+              id="change-gemini-key-btn"
+              onClick={onChangeKey}
+              className="px-2.5 py-1 rounded-full bg-white/10 hover:bg-[#4fa89a]/20 border border-white/15 hover:border-[#4fa89a]/40 text-white text-[10.5px] font-sans font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+              title="Change your customer Gemini API key"
+            >
+              <KeyRound className="w-3 h-3 text-[#4fa89a]" />
+              <span className="hidden sm:inline">Key</span>
+            </button>
+          )}
+
           <button
             id="open-library-btn"
             onClick={onOpenLibrary}
